@@ -1,0 +1,54 @@
+{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, StandaloneDeriving, UndecidableInstances #-}
+module Network.IRC.Bot.BotMonad 
+    ( BotPartT(..)
+    , BotMonad(..)
+    , runBotPartT
+    , mapBotPartT
+    ) where
+
+import Control.Applicative (Applicative, Alternative, (<$>))
+import Control.Arrow (first)
+import Control.Monad (MonadPlus(mplus, mzero), forever, replicateM, when)
+import Control.Monad.Cont   (MonadCont)
+import Control.Monad.Error  (MonadError)
+import Control.Monad.Reader (MonadReader(ask, local), MonadTrans, ReaderT(runReaderT), mapReaderT)
+import Control.Monad.Writer (MonadWriter)
+import Control.Monad.State  (MonadState)
+import Control.Monad.RWS    (MonadRWS)
+import Control.Concurrent.Chan (Chan, dupChan, newChan, readChan, writeChan)
+import Control.Monad.Fix (MonadFix)
+import Control.Monad.Trans
+import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
+
+-- FIXME: add whoami?
+class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
+  askMessage   :: m Message
+  askOutChan   :: m (Chan Message)
+  localMessage :: (Message -> Message) -> m a -> m a
+  sendMessage  :: Message -> m ()
+  
+newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT (Message, Chan Message) m a }
+                     deriving (Applicative, Alternative, Functor, Monad, MonadFix, MonadPlus, MonadTrans, MonadIO, MonadWriter w, MonadState s, MonadError e, MonadCont)
+
+instance (MonadReader r m) => MonadReader r (BotPartT m) where
+    ask     = BotPartT (lift ask)
+    local f = BotPartT . mapReaderT (local f) . unBotPartT
+
+instance (MonadRWS r w s m) => MonadRWS r w s (BotPartT m)
+                              
+runBotPartT :: BotPartT m a -> (Message, Chan Message) -> m a
+runBotPartT botPartT = runReaderT (unBotPartT botPartT)
+                              
+mapBotPartT :: (m a -> n b) -> BotPartT m a -> BotPartT n b
+mapBotPartT f (BotPartT r) = BotPartT $ mapReaderT f r
+
+instance (Functor m, MonadIO m, MonadPlus m) => BotMonad (BotPartT m) where
+  askMessage = BotPartT (fst <$> ask)
+  askOutChan = BotPartT (snd <$> ask)
+  localMessage f (BotPartT r) = BotPartT (local (first f) r)
+  sendMessage msg =
+    BotPartT $ do outChan <- snd <$> ask
+                  liftIO $ writeChan outChan msg
+                  return ()
+
+    
