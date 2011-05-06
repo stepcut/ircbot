@@ -70,7 +70,7 @@ parsecPart p =
     do name <- whoami
        priv <- privMsg 
        logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
-       ma <- runParserT (botPrefix "stepbot" >> p (head (receivers priv))) () (msg priv) (msg priv)
+       ma <- runParserT (botPrefix name >> p (head (receivers priv))) () (msg priv) (msg priv)
        case ma of
          (Left e) -> 
              do logM Debug $ "Parse error: " ++ show e
