@@ -33,7 +33,7 @@ class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
 
 data BotEnv = BotEnv { message :: Message
                      , outChan :: Chan Message
-                     , logger  :: Logger
+                     , logFn   :: Logger
                      , botName :: String
                      }
   
@@ -61,6 +61,6 @@ instance (Functor m, MonadIO m, MonadPlus m) => BotMonad (BotPartT m) where
                   liftIO $ writeChan out msg
                   return ()
   logM lvl msg =
-    BotPartT $ do l <- logger <$> ask
+    BotPartT $ do l <- logFn <$> ask
                   liftIO $ l lvl msg
   whoami       =  BotPartT $ botName <$> ask

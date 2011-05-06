@@ -52,11 +52,12 @@ Cabal-version:       >=1.2
 Library
   -- Modules exported by the library.
   Exposed-modules:     
-                       Network.IRC.Bot.BotMonad,
-                       Network.IRC.Bot.Core, 
-                       Network.IRC.Bot.Commands, 
-                       Network.IRC.Bot.Part.Dice, 
-                       Network.IRC.Bot.Part.Ping,
+                       Network.IRC.Bot
+                       Network.IRC.Bot.BotMonad
+                       Network.IRC.Bot.Core
+                       Network.IRC.Bot.Commands
+                       Network.IRC.Bot.Part.Dice
+                       Network.IRC.Bot.Part.Ping
                        Network.IRC.Bot.Parsec
   
   -- Packages needed in order to build this package.
