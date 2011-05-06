@@ -16,7 +16,7 @@ dicePart = parsecPart diceCommand
 
 diceCommand :: (BotMonad m) => String -> ParsecT String () m ()
 diceCommand target =
-    do string "dice"
+    do try $ string "dice"
        (numDice, numSides, modifier) <- (do 
          skipMany1 space
          nd <- nat <|> return 1
@@ -34,3 +34,4 @@ diceCommand target =
        rolls <- liftIO $ replicateM (fromIntegral numDice) $ randomRIO (1, numSides)
        let results = "You rolled " ++ show numDice ++ " " ++ show numSides ++ "-sided dice with a +" ++ show modifier ++ " modifier: " ++ show rolls ++ " => " ++ show (sum (modifier : rolls))
        sendCommand (PrivMsg Nothing [target] results)
+    <|> return ()
