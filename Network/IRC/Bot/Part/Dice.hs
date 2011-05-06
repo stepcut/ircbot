@@ -2,6 +2,7 @@ module Network.IRC.Bot.Part.Dice where
 
 import Control.Monad
 import Control.Monad.Trans
+import Network.IRC.Bot.Log
 import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands
 import Network.IRC.Bot.Parsec
@@ -13,7 +14,7 @@ import qualified Text.Parsec.Error as P
 dicePart :: (BotMonad m) => m ()
 dicePart =
     do priv <- privMsg
-       liftIO $ putStrLn $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
+       logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
        return ()
 
 diceCommand :: (BotMonad m) => String -> ParsecT String () m ()

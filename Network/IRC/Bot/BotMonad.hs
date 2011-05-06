@@ -2,6 +2,7 @@
 module Network.IRC.Bot.BotMonad 
     ( BotPartT(..)
     , BotMonad(..)
+    , BotEnv(..)
     , runBotPartT
     , mapBotPartT
     ) where
@@ -19,6 +20,7 @@ import Control.Concurrent.Chan (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Trans
 import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
+import Network.IRC.Bot.Log
 
 -- FIXME: add whoami?
 class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
@@ -26,8 +28,14 @@ class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
   askOutChan   :: m (Chan Message)
   localMessage :: (Message -> Message) -> m a -> m a
   sendMessage  :: Message -> m ()
+  logM         :: LogLevel -> String -> m ()
+
+data BotEnv = BotEnv { message :: Message
+                     , outChan :: Chan Message
+                     , logger  :: Logger
+                     }
   
-newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT (Message, Chan Message) m a }
+newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT BotEnv m a }
                      deriving (Applicative, Alternative, Functor, Monad, MonadFix, MonadPlus, MonadTrans, MonadIO, MonadWriter w, MonadState s, MonadError e, MonadCont)
 
 instance (MonadReader r m) => MonadReader r (BotPartT m) where
@@ -36,19 +44,22 @@ instance (MonadReader r m) => MonadReader r (BotPartT m) where
 
 instance (MonadRWS r w s m) => MonadRWS r w s (BotPartT m)
                               
-runBotPartT :: BotPartT m a -> (Message, Chan Message) -> m a
+runBotPartT :: BotPartT m a -> BotEnv -> m a
 runBotPartT botPartT = runReaderT (unBotPartT botPartT)
                               
 mapBotPartT :: (m a -> n b) -> BotPartT m a -> BotPartT n b
 mapBotPartT f (BotPartT r) = BotPartT $ mapReaderT f r
 
 instance (Functor m, MonadIO m, MonadPlus m) => BotMonad (BotPartT m) where
-  askMessage = BotPartT (fst <$> ask)
-  askOutChan = BotPartT (snd <$> ask)
-  localMessage f (BotPartT r) = BotPartT (local (first f) r)
+  askMessage = BotPartT (message <$> ask)
+  askOutChan = BotPartT (outChan <$> ask)
+  localMessage f (BotPartT r) = BotPartT (local (\e -> e { message = f (message e) }) r)
   sendMessage msg =
-    BotPartT $ do outChan <- snd <$> ask
-                  liftIO $ writeChan outChan msg
+    BotPartT $ do out <- outChan <$> ask
+                  liftIO $ writeChan out msg
                   return ()
+  logM lvl msg =
+    BotPartT $ do l <- logger <$> ask
+                  liftIO $ l lvl msg
 
     

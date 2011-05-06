@@ -33,6 +33,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Char (digitToInt)
 import Data.List (intercalate, nub)
+import Network.IRC.Bot.Log
 import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands
 import Text.Parsec
@@ -45,6 +46,7 @@ instance (BotMonad m, Monad m) => BotMonad (ParsecT s u m) where
     askOutChan       = lift askOutChan
     localMessage f m = mapParsecT (localMessage f) m
     sendMessage      = lift . sendMessage
+    logM lvl msg     = lift (logM lvl msg)
 
 mapParsecT :: (Monad m, Monad n) => (m (Consumed (m (Reply s u a))) -> n (Consumed (n (Reply s u b)))) -> ParsecT s u m a -> ParsecT s u n b
 mapParsecT f p = mkPT $ \s -> f (runParsecT p s)
@@ -65,11 +67,11 @@ botPrefix name =
 -- parsecPart :: (Monad m, MonadPlus m, BotMonad m) => String -> ParsecT String () m a -> m a
 parsecPart name p = 
     do priv <- privMsg 
-       liftIO $ putStrLn $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
+       logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
        ma <- runParserT (botPrefix "stepbot" >> p (head (receivers priv))) () (msg priv) (msg priv)
        case ma of
          (Left e) -> 
-             do liftIO $ putStrLn $ "Parse error: " ++ show e
+             do logM Debug $ "Parse error: " ++ show e
                 reportError (head (receivers priv)) e
                 mzero
          (Right a) -> return a
