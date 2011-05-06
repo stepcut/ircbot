@@ -71,17 +71,17 @@ ircConnect host port n u =
        hPutStrLn h (encode (I.user (username u) (hostname u) (servername u) (realname u)))
        return h
        
-partLoop :: Logger -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
-partLoop logger incomingChan outgoingChan botPart =
+partLoop :: Logger -> String -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
+partLoop logger botName incomingChan outgoingChan botPart =
   forever $ do msg <- readChan incomingChan
-               runBotPartT botPart (BotEnv msg outgoingChan logger)
+               runBotPartT botPart (BotEnv msg outgoingChan logger botName)
                
-ircLoop :: Logger -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
-ircLoop logger incomingChan outgoingChan parts = mapM forkPart parts
+ircLoop :: Logger -> String -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
+ircLoop logger botName incomingChan outgoingChan parts = mapM forkPart parts
   where
     forkPart botPart =
       do inChan <- dupChan incomingChan
-         forkIO $ partLoop logger inChan outgoingChan (botPart `mplus` return ())
+         forkIO $ partLoop logger botName inChan outgoingChan (botPart `mplus` return ())
        
 -- reconnect loop is still a bit buggy     
 -- if you try to write multiple lines, and the all fail, reconnect will be called multiple times..
@@ -176,7 +176,7 @@ simpleBot' mChanLogger logger host mPort nick user channel parts =
                        lastActivity <- readMVar mv
                        when (now > addUTCTime (fromIntegral timeout) lastActivity) forceReconnect
                        threadDelay (30*10^6) -- check every 30 seconds
-     ircTids <- ircLoop logger incomingChan outgoingChan parts
+     ircTids <- ircLoop logger nick incomingChan outgoingChan parts
      return $ maybe id (:) mLogTid $ (incomingTid : outgoingTid : watchDogTid : ircTids)
     where
       onConnect outgoingChan = 

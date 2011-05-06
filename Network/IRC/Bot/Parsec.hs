@@ -47,6 +47,7 @@ instance (BotMonad m, Monad m) => BotMonad (ParsecT s u m) where
     localMessage f m = mapParsecT (localMessage f) m
     sendMessage      = lift . sendMessage
     logM lvl msg     = lift (logM lvl msg)
+    whoami           = lift whoami
 
 mapParsecT :: (Monad m, Monad n) => (m (Consumed (m (Reply s u a))) -> n (Consumed (n (Reply s u b)))) -> ParsecT s u m a -> ParsecT s u n b
 mapParsecT f p = mkPT $ \s -> f (runParsecT p s)
@@ -65,8 +66,9 @@ botPrefix name =
        lift mzero
 
 -- parsecPart :: (Monad m, MonadPlus m, BotMonad m) => String -> ParsecT String () m a -> m a
-parsecPart name p = 
-    do priv <- privMsg 
+parsecPart p = 
+    do name <- whoami
+       priv <- privMsg 
        logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
        ma <- runParserT (botPrefix "stepbot" >> p (head (receivers priv))) () (msg priv) (msg priv)
        case ma of

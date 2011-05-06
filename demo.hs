@@ -8,8 +8,7 @@ import Network.IRC               (Message)
 import Network.IRC.Bot.BotMonad  (BotMonad(..))
 import Network.IRC.Bot.Core      (BotConf(..), User(..),simpleBot, nullBotConf)
 import Network.IRC.Bot.Log       (LogLevel(..), nullLogger, stdoutLogger)
-import Network.IRC.Bot.Parsec    (parsecPart)
-import Network.IRC.Bot.Part.Dice (diceCommand)
+import Network.IRC.Bot.Part.Dice (dicePart)
 import Network.IRC.Bot.Part.Ping (pingPart)
 import System.Console.GetOpt
 import System.Environment        (getArgs, getProgName)
@@ -92,5 +91,5 @@ main =
 ircParts :: (BotMonad m) => [m ()]
 ircParts = 
   [ pingPart
-  , parsecPart "stepbot" diceCommand
+  , dicePart
   ]

@@ -12,10 +12,7 @@ import Text.Parsec.Error (errorMessages, messageString)
 import qualified Text.Parsec.Error as P
 
 dicePart :: (BotMonad m) => m ()
-dicePart =
-    do priv <- privMsg
-       logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
-       return ()
+dicePart = parsecPart diceCommand
 
 diceCommand :: (BotMonad m) => String -> ParsecT String () m ()
 diceCommand target =
