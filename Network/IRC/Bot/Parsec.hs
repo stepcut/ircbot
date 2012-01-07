@@ -38,7 +38,6 @@ import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands
 import Text.Parsec
 import Text.Parsec.Error (errorMessages, messageString)
--- import System.Log.Logger (Priority(DEBUG, INFO, ERROR), logM)
 import qualified Text.Parsec.Error as P
 
 instance (BotMonad m, Monad m) => BotMonad (ParsecT s u m) where
