@@ -57,8 +57,8 @@ data User = User
 
 nullUser :: User
 nullUser = User { username   = ""
-                , hostname   = ""
-                , servername = ""
+                , hostname   = "."
+                , servername = "."
                 , realname   = ""
                 }
 
