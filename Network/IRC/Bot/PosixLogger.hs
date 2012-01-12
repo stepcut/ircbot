@@ -6,9 +6,11 @@ import Data.Time.Clock (UTCTime(..), addUTCTime, getCurrentTime)
 import Data.Time.Format (formatTime)
 import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
 import Network.IRC.Bot.Commands
-import System.FilePath
-import System.Locale
-import System.Posix
+import System.FilePath ((</>))
+import System.Locale (defaultTimeLocale)
+import System.Posix ( Fd, OpenMode(WriteOnly), OpenFileFlags(append), closeFd, defaultFileFlags
+                    , fdWrite, openFd
+                    )
 
 -- TODO: This should be modified so that a formatting filter can be applied to the log messages
 -- TODO: should be updated so that log file name matches channel
