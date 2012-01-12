@@ -14,7 +14,6 @@ import Control.Concurrent.MVar  (MVar, modifyMVar_, newMVar, readMVar)
 import Control.Exception        (IOException, catch)
 import Control.Monad            (mplus, forever, when)
 import Data.Data                (Data, Typeable)
-import Data.Maybe               (fromMaybe)
 import Data.Time                (UTCTime, addUTCTime, getCurrentTime)
 import Network                  (HostName, PortID(PortNumber), connectTo)
 import Network.IRC              (Message, decode, encode, joinChan, nick, user)
@@ -30,7 +29,7 @@ data BotConf =
     { channelLogger :: (Maybe (Chan Message -> IO ()))  -- ^ optional channel logging function
     , logger :: Logger           -- ^ app logging
     , host   :: HostName         -- ^ irc server to connect 
-    , port   :: Maybe PortID     -- ^ irc port to connect to (usually, 'PortNumber 6667')
+    , port   :: PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
     , nick   :: String           -- ^ irc nick
     , user   :: User             -- ^ irc user info
     , channel :: String          -- ^ channel to join
@@ -41,7 +40,7 @@ nullBotConf =
     BotConf { channelLogger  = Nothing
             , logger  = stdoutLogger Normal
             , host    = ""
-            , port    = Nothing
+            , port    = PortNumber 6667
             , nick    = ""
             , user    = nullUser
             , channel = ""
@@ -151,13 +150,13 @@ simpleBot BotConf{..} parts =
 simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> Logger           -- ^ application logging
           -> HostName         -- ^ irc server to connect 
-          -> Maybe PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
+          -> PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
           -> String           -- ^ irc nick
           -> User             -- ^ irc user info
           -> String           -- ^ channel to join
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', or equivalent)
           -> IO [ThreadId]    -- ^ 'ThreadId' for all forked handler threads
-simpleBot' mChanLogger logger host mPort nick user channel parts =  
+simpleBot' mChanLogger logger host port nick user channel parts =  
   do (mLogTid, mLogChan) <- 
          case mChanLogger of
            Nothing  -> return (Nothing, Nothing)
@@ -169,7 +168,7 @@ simpleBot' mChanLogger logger host mPort nick user channel parts =
      outgoingChan <- newChan :: IO (Chan Message)
      incomingChan <- newChan :: IO (Chan Message)
      mv <- newMVar =<< getCurrentTime
-     (outgoingTid, incomingTid, forceReconnect) <- connectionLoop logger mv host (fromMaybe (PortNumber 6667) mPort) nick user outgoingChan incomingChan mLogChan (onConnect outgoingChan)
+     (outgoingTid, incomingTid, forceReconnect) <- connectionLoop logger mv host port nick user outgoingChan incomingChan mLogChan (onConnect outgoingChan)
      watchDogTid <- forkIO $ forever $ 
                     do let timeout = 5*60
                        now          <- getCurrentTime
