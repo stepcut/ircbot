@@ -31,7 +31,7 @@ botOpts =
     ]
     where
       setIrcServer n = BotConfOpt $ \c -> c { host = n, user = (user c) { servername = n } }
-      setPort str    = BotConfOpt $ \c -> c { port = Just $ PortNumber (fromIntegral $ read str) }
+      setPort str    = BotConfOpt $ \c -> c { port = PortNumber (fromIntegral $ read str) }
       setNick n      = BotConfOpt $ \c -> c { nick = n }
       setUsername n  = BotConfOpt $ \c -> c { user = (user c) { username = n } }
       setHostname n  = BotConfOpt $ \c -> c { user = (user c) { hostname = n } }
