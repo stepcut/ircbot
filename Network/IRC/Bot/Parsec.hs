@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Network.IRC.Bot.Parsec where
 
 {-
@@ -29,7 +30,9 @@ data Part m =
 This is good, unless multiple plugins wanted to depend on some common backgroundParts
 -}
 
+import Control.Applicative ((<$>))
 import Control.Monad
+import Control.Monad.Reader (MonadReader, ask)
 import Control.Monad.Trans
 import Data.Char (digitToInt)
 import Data.List (intercalate, nub)
@@ -41,6 +44,7 @@ import Text.Parsec.Error (errorMessages, messageString)
 import qualified Text.Parsec.Error as P
 
 instance (BotMonad m, Monad m) => BotMonad (ParsecT s u m) where
+    askBotEnv        = lift askBotEnv
     askMessage       = lift askMessage
     askOutChan       = lift askOutChan
     localMessage f m = mapParsecT (localMessage f) m
@@ -51,25 +55,37 @@ instance (BotMonad m, Monad m) => BotMonad (ParsecT s u m) where
 mapParsecT :: (Monad m, Monad n) => (m (Consumed (m (Reply s u a))) -> n (Consumed (n (Reply s u b)))) -> ParsecT s u m a -> ParsecT s u n b
 mapParsecT f p = mkPT $ \s -> f (runParsecT p s)
 
+-- | parse a positive integer
 nat :: (Monad m) => ParsecT String () m Integer
 nat =
     do digits <- many1 digit
        return $ foldl (\x d -> x * 10 + fromIntegral (digitToInt d)) 0 digits
 
-botPrefix :: (MonadPlus m) => String -> ParsecT String () m ()
-botPrefix name = 
-    (try $ do string name
-              string ": "
+-- | parser that checks for the 'cmdPrefix' (from the 'BotEnv')
+botPrefix :: (BotMonad m) => ParsecT String () m ()
+botPrefix =
+    (try $ do str <- cmdPrefix <$> askBotEnv
+              string str
               return ())
       <|>
        lift mzero
 
--- parsecPart :: (Monad m, MonadPlus m, BotMonad m) => String -> ParsecT String () m a -> m a
+-- | create a bot part by using Parsec to parse the command
+--
+-- The argument to 'parsecPart' is a parser function.
+--
+-- The argument to that parsec function is the 'target' that the response should be sent to.
+--
+-- The parser will receive the 'msg' from the 'PrivMsg'.
+--
+-- see 'dicePart' for an example usage.
+parsecPart :: (BotMonad m) =>
+              (String -> ParsecT String () m a) 
+           -> m a
 parsecPart p = 
-    do name <- whoami
-       priv <- privMsg 
+    do priv <- privMsg 
        logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
-       ma <- runParserT (botPrefix name >> p (head (receivers priv))) () (msg priv) (msg priv)
+       ma <- runParserT (p $ head (receivers priv)) () (msg priv) (msg priv)
        case ma of
          (Left e) -> 
              do logM Debug $ "Parse error: " ++ show e

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, StandaloneDeriving, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, StandaloneDeriving, UndecidableInstances #-}
 module Network.IRC.Bot.BotMonad 
     ( BotPartT(..)
     , BotMonad(..)
@@ -24,6 +24,7 @@ import Network.IRC.Bot.Log
 
 -- FIXME: add whoami?
 class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
+  askBotEnv    :: m BotEnv
   askMessage   :: m Message
   askOutChan   :: m (Chan Message)
   localMessage :: (Message -> Message) -> m a -> m a
@@ -31,10 +32,11 @@ class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
   logM         :: LogLevel -> String -> m ()
   whoami       :: m String
 
-data BotEnv = BotEnv { message :: Message
-                     , outChan :: Chan Message
-                     , logFn   :: Logger
-                     , botName :: String
+data BotEnv = BotEnv { message   :: Message
+                     , outChan   :: Chan Message
+                     , logFn     :: Logger
+                     , botName   :: String
+                     , cmdPrefix :: String
                      }
   
 newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT BotEnv m a }
@@ -53,6 +55,7 @@ mapBotPartT :: (m a -> n b) -> BotPartT m a -> BotPartT n b
 mapBotPartT f (BotPartT r) = BotPartT $ mapReaderT f r
 
 instance (Functor m, MonadIO m, MonadPlus m) => BotMonad (BotPartT m) where
+  askBotEnv  = BotPartT ask
   askMessage = BotPartT (message <$> ask)
   askOutChan = BotPartT (outChan <$> ask)
   localMessage f (BotPartT r) = BotPartT (local (\e -> e { message = f (message e) }) r)

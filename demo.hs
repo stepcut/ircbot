@@ -26,6 +26,7 @@ botOpts =
     , Option [] ["username"]   (ReqArg setUsername  "username")       "ident username"
     , Option [] ["hostname"]   (ReqArg setHostname  "hostname")       "hostname of machine bot is connecting from"
     , Option [] ["realname"]   (ReqArg setRealname  "name")           "bot's real name"
+    , Option [] ["cmd-prefix"] (ReqArg setCmdPrefix "prefix")         "prefix to bot commands (e.g., ?, @, bot: )"
     , Option [] ["channel"]    (ReqArg setChannel   "channel name")   "channel to join after connecting."
     , Option [] ["log-level"]  (ReqArg setLogLevel  "debug, normal, important, quiet") "set the logging level"
     ]
@@ -36,6 +37,7 @@ botOpts =
       setUsername n  = BotConfOpt $ \c -> c { user = (user c) { username = n } }
       setHostname n  = BotConfOpt $ \c -> c { user = (user c) { hostname = n } }
       setRealname n  = BotConfOpt $ \c -> c { user = (user c) { realname = n } }
+      setCmdPrefix p = BotConfOpt $ \c -> c { prefix = p }
       setChannel ch  = BotConfOpt $ \c -> c { channel = ch }
       setLogLevel l  = BotConfOpt $ \c ->
         case l of

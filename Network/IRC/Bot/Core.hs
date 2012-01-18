@@ -31,6 +31,7 @@ data BotConf =
     , host   :: HostName         -- ^ irc server to connect 
     , port   :: PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
     , nick   :: String           -- ^ irc nick
+    , prefix :: String           -- ^ command prefix
     , user   :: User             -- ^ irc user info
     , channel :: String          -- ^ channel to join
     }
@@ -42,6 +43,7 @@ nullBotConf =
             , host    = ""
             , port    = PortNumber 6667
             , nick    = ""
+            , prefix  = "#"
             , user    = nullUser
             , channel = ""
             }
@@ -70,17 +72,17 @@ ircConnect host port n u =
        hPutStrLn h (encode (I.user (username u) (hostname u) (servername u) (realname u)))
        return h
        
-partLoop :: Logger -> String -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
-partLoop logger botName incomingChan outgoingChan botPart =
+partLoop :: Logger -> String -> String -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
+partLoop logger botName prefix incomingChan outgoingChan botPart =
   forever $ do msg <- readChan incomingChan
-               runBotPartT botPart (BotEnv msg outgoingChan logger botName)
+               runBotPartT botPart (BotEnv msg outgoingChan logger botName prefix)
                
-ircLoop :: Logger -> String -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
-ircLoop logger botName incomingChan outgoingChan parts = mapM forkPart parts
+ircLoop :: Logger -> String -> String -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
+ircLoop logger botName cmdPrefix incomingChan outgoingChan parts = mapM forkPart parts
   where
     forkPart botPart =
       do inChan <- dupChan incomingChan
-         forkIO $ partLoop logger botName inChan outgoingChan (botPart `mplus` return ())
+         forkIO $ partLoop logger botName cmdPrefix inChan outgoingChan (botPart `mplus` return ())
        
 -- reconnect loop is still a bit buggy     
 -- if you try to write multiple lines, and the all fail, reconnect will be called multiple times..
@@ -140,7 +142,7 @@ simpleBot :: BotConf          -- ^ Bot configuration
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', or equivalent)
           -> IO [ThreadId]    -- ^ 'ThreadId' for all forked handler threads
 simpleBot BotConf{..} parts =
-    simpleBot' channelLogger logger host port nick user channel parts
+    simpleBot' channelLogger logger host port nick prefix user channel parts
 
 -- |simpleBot' connects to the server and handles messages using the supplied BotPartTs
 --
@@ -152,11 +154,12 @@ simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> HostName         -- ^ irc server to connect 
           -> PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
           -> String           -- ^ irc nick
+          -> String           -- ^ command prefix 
           -> User             -- ^ irc user info
           -> String           -- ^ channel to join
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', or equivalent)
           -> IO [ThreadId]    -- ^ 'ThreadId' for all forked handler threads
-simpleBot' mChanLogger logger host port nick user channel parts =  
+simpleBot' mChanLogger logger host port nick prefix user channel parts =  
   do (mLogTid, mLogChan) <- 
          case mChanLogger of
            Nothing  -> return (Nothing, Nothing)
@@ -175,7 +178,7 @@ simpleBot' mChanLogger logger host port nick user channel parts =
                        lastActivity <- readMVar mv
                        when (now > addUTCTime (fromIntegral timeout) lastActivity) forceReconnect
                        threadDelay (30*10^6) -- check every 30 seconds
-     ircTids <- ircLoop logger nick incomingChan outgoingChan parts
+     ircTids <- ircLoop logger nick prefix incomingChan outgoingChan parts
      return $ maybe id (:) mLogTid $ (incomingTid : outgoingTid : watchDogTid : ircTids)
     where
       onConnect outgoingChan = 

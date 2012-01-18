@@ -16,7 +16,8 @@ dicePart = parsecPart diceCommand
 
 diceCommand :: (BotMonad m) => String -> ParsecT String () m ()
 diceCommand target =
-    do try $ string "dice"
+    do botPrefix
+       try $ string "dice"
        (numDice, numSides, modifier) <- (do 
          skipMany1 space
          nd <- nat <|> return 1
