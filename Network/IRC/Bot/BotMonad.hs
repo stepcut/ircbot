@@ -22,7 +22,6 @@ import Control.Monad.Trans
 import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
 import Network.IRC.Bot.Log
 
--- FIXME: add whoami?
 class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
   askBotEnv    :: m BotEnv
   askMessage   :: m Message
@@ -32,15 +31,16 @@ class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
   logM         :: LogLevel -> String -> m ()
   whoami       :: m String
 
-data BotEnv = BotEnv { message   :: Message
-                     , outChan   :: Chan Message
-                     , logFn     :: Logger
-                     , botName   :: String
-                     , cmdPrefix :: String
-                     }
+data BotEnv = BotEnv
+    { message   :: Message
+    , outChan   :: Chan Message
+    , logFn     :: Logger
+    , botName   :: String
+    , cmdPrefix :: String
+    }
   
 newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT BotEnv m a }
-                     deriving (Applicative, Alternative, Functor, Monad, MonadFix, MonadPlus, MonadTrans, MonadIO, MonadWriter w, MonadState s, MonadError e, MonadCont)
+    deriving (Applicative, Alternative, Functor, Monad, MonadFix, MonadPlus, MonadTrans, MonadIO, MonadWriter w, MonadState s, MonadError e, MonadCont)
 
 instance (MonadReader r m) => MonadReader r (BotPartT m) where
     ask     = BotPartT (lift ask)
