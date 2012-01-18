@@ -151,7 +151,7 @@ simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> String           -- ^ irc nick
           -> String           -- ^ command prefix 
           -> User             -- ^ irc user info
-          -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', or equivalent)
+          -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', 'channelsPart', and 'nickUserPart')
           -> IO [ThreadId]    -- ^ 'ThreadId' for all forked handler threads
 simpleBot' mChanLogger logger host port nick prefix user parts =  
   do (mLogTid, mLogChan) <- 
