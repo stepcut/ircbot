@@ -1,5 +1,5 @@
 Name:                ircbot
-Version:             0.1.5
+Version:             0.2.0
 Synopsis:            A library for writing irc bots
 Homepage:            http://patch-tag.com/r/stepcut/ircbot
 License:             BSD3
@@ -18,9 +18,12 @@ Library
                        Network.IRC.Bot.BotMonad
                        Network.IRC.Bot.Core
                        Network.IRC.Bot.Commands
+                       Network.IRC.Bot.ErrorCodes
                        Network.IRC.Bot.Log
+                       Network.IRC.Bot.Part.Channels
                        Network.IRC.Bot.Part.Dice
                        Network.IRC.Bot.Part.Ping
+                       Network.IRC.Bot.Part.NickUser
                        Network.IRC.Bot.Parsec
                        Network.IRC.Bot.PosixLogger
   

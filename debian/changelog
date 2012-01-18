@@ -1,3 +1,9 @@
+haskell-ircbot (0.2.0) unstable; urgency=low
+
+  * make nick registration and channel joining smarter, and hopefully more reliable
+
+ -- Jeremy Shaw <jeremy@seereason.com>  Wed, 18 Jan 2012 12:58:17 -0600
+
 haskell-ircbot (0.1.1) unstable; urgency=low
 
   * Updated homepage in ircbot.cabal

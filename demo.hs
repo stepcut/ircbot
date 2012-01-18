@@ -3,13 +3,16 @@ module Main where
 
 import Control.Concurrent        (killThread)
 import Control.Concurrent.Chan   (Chan)
+import Data.Set                  (Set, insert)
 import Network                   (HostName, PortID(PortNumber), connectTo)
 import Network.IRC               (Message)
 import Network.IRC.Bot.BotMonad  (BotMonad(..))
-import Network.IRC.Bot.Core      (BotConf(..), User(..),simpleBot, nullBotConf)
+import Network.IRC.Bot.Core      (BotConf(..), User(..), nullBotConf, simpleBot)
 import Network.IRC.Bot.Log       (LogLevel(..), nullLogger, stdoutLogger)
 import Network.IRC.Bot.Part.Dice (dicePart)
 import Network.IRC.Bot.Part.Ping (pingPart)
+import Network.IRC.Bot.Part.NickUser (nickUserPart)
+import Network.IRC.Bot.Part.Channels (initChannelsPart)
 import System.Console.GetOpt
 import System.Environment        (getArgs, getProgName)
 import System.Exit               (exitFailure)
@@ -27,7 +30,7 @@ botOpts =
     , Option [] ["hostname"]   (ReqArg setHostname  "hostname")       "hostname of machine bot is connecting from"
     , Option [] ["realname"]   (ReqArg setRealname  "name")           "bot's real name"
     , Option [] ["cmd-prefix"] (ReqArg setCmdPrefix "prefix")         "prefix to bot commands (e.g., ?, @, bot: )"
-    , Option [] ["channel"]    (ReqArg setChannel   "channel name")   "channel to join after connecting."
+    , Option [] ["channel"]    (ReqArg addChannel   "channel name")   "channel to join after connecting. (can be specified more than once to join multiple channels)"
     , Option [] ["log-level"]  (ReqArg setLogLevel  "debug, normal, important, quiet") "set the logging level"
     ]
     where
@@ -38,14 +41,13 @@ botOpts =
       setHostname n  = BotConfOpt $ \c -> c { user = (user c) { hostname = n } }
       setRealname n  = BotConfOpt $ \c -> c { user = (user c) { realname = n } }
       setCmdPrefix p = BotConfOpt $ \c -> c { prefix = p }
-      setChannel ch  = BotConfOpt $ \c -> c { channel = ch }
+      addChannel ch  = BotConfOpt $ \c -> c { channels = insert ch (channels c) }
       setLogLevel l  = BotConfOpt $ \c ->
         case l of
           "debug"     -> c { logger = stdoutLogger Debug }
           "normal"    -> c { logger = stdoutLogger Normal }
           "important" -> c { logger = stdoutLogger Important }
           "quiet"     -> c { logger = nullLogger }
-
 
 getBotConf :: Maybe (Chan Message -> IO ()) -> IO BotConf 
 getBotConf mLogger =
@@ -66,32 +68,36 @@ exitHelp msg =
        putStr (helpMessage progName)
        exitFailure
 
-
 checkConf :: BotConf -> IO ()
 checkConf BotConf{..}
     | null host            = exitHelp "must specify --irc-server"
     | null nick            = exitHelp "must specify --nick"
-    | null channel         = exitHelp "must specify --channel"
     | null (username user) = exitHelp "must specify --username"
     | null (hostname user) = exitHelp "must specify --hostname"
     | null (realname user) = exitHelp "must specify --realname"
     | otherwise            = return ()
 
 helpMessage progName = usageInfo header botOpts
-  where 
+  where
   header = "Usage: "++progName++" [OPTION...]\n" ++ "e.g.\n" ++
            progName ++ " --irc-server irc.freenode.net --nick stepbot --username stepbot --hostname happstack.com --realname \"happstack bot\" --channel \"#stepbot\""
 
 main :: IO ()
 main =
     do botConf <- getBotConf Nothing
+       ircParts <- initParts (channels botConf)
        tids <- simpleBot botConf ircParts
        (logger botConf) Important  "Press enter to quit."
        getLine
        mapM_ killThread tids
 
-ircParts :: (BotMonad m) => [m ()]
-ircParts = 
-  [ pingPart
-  , dicePart
-  ]
+initParts :: (BotMonad m) =>
+             Set String  -- ^ set of channels to join
+          -> IO [m ()]
+initParts chans =
+    do (_, channelsPart) <- initChannelsPart chans
+       return [ pingPart
+              , nickUserPart
+              , channelsPart
+              , dicePart
+              ]
