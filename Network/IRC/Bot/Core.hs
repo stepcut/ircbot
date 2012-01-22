@@ -32,25 +32,25 @@ import System.IO                (BufferMode(LineBuffering), Handle, hClose, hGet
 data BotConf = 
     BotConf
     { channelLogger :: (Maybe (Chan Message -> IO ()))  -- ^ optional channel logging function
-    , logger :: Logger           -- ^ app logging
-    , host   :: HostName         -- ^ irc server to connect 
-    , port   :: PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
-    , nick   :: String           -- ^ irc nick
-    , prefix :: String           -- ^ command prefix
-    , user   :: User             -- ^ irc user info
-    , channels :: Set String     -- ^ channel to join
+    , logger        :: Logger           -- ^ app logging
+    , host          :: HostName         -- ^ irc server to connect 
+    , port          :: PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
+    , nick          :: String           -- ^ irc nick
+    , commandPrefix :: String           -- ^ command prefix
+    , user          :: User             -- ^ irc user info
+    , channels      :: Set String       -- ^ channel to join
     }
 
 nullBotConf :: BotConf
 nullBotConf =
     BotConf { channelLogger  = Nothing
-            , logger   = stdoutLogger Normal
-            , host     = ""
-            , port     = PortNumber 6667
-            , nick     = ""
-            , prefix   = "#"
-            , user     = nullUser
-            , channels = empty
+            , logger         = stdoutLogger Normal
+            , host           = ""
+            , port           = PortNumber 6667
+            , nick           = ""
+            , commandPrefix  = "#"
+            , user           = nullUser
+            , channels       = empty
             }
 
 -- | connect to irc server and send NICK and USER commands
@@ -66,12 +66,12 @@ partLoop logger botName prefix incomingChan outgoingChan botPart =
                runBotPartT botPart (BotEnv msg outgoingChan logger botName prefix)
 
 ircLoop :: Logger -> String -> String -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
-ircLoop logger botName cmdPrefix incomingChan outgoingChan parts = 
+ircLoop logger botName prefix incomingChan outgoingChan parts = 
     mapM forkPart parts
   where
     forkPart botPart =
       do inChan <- dupChan incomingChan
-         forkIO $ partLoop logger botName cmdPrefix inChan outgoingChan (botPart `mplus` return ())
+         forkIO $ partLoop logger botName prefix inChan outgoingChan (botPart `mplus` return ())
 
 -- reconnect loop is still a bit buggy     
 -- if you try to write multiple lines, and the all fail, reconnect will be called multiple times..
@@ -137,7 +137,7 @@ simpleBot :: BotConf          -- ^ Bot configuration
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', or equivalent)
           -> IO [ThreadId]    -- ^ 'ThreadId' for all forked handler threads
 simpleBot BotConf{..} parts =
-    simpleBot' channelLogger logger host port nick prefix user parts
+    simpleBot' channelLogger logger host port nick commandPrefix user parts
 
 -- |simpleBot' connects to the server and handles messages using the supplied BotPartTs
 --

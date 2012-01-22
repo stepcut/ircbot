@@ -31,9 +31,9 @@ ping =
        
            
 data PrivMsg           
-  = PrivMsg { prefix :: (Maybe Prefix) 
-            , receivers :: [String] 
-            , msg :: String
+  = PrivMsg { prefix     :: (Maybe Prefix) 
+            , receivers  :: [String] 
+            , msg        :: String
             }
       deriving (Eq, Read, Show)
        
@@ -49,7 +49,7 @@ toPrivMsg msg =
       prefix = msg_prefix  msg
   in case cmd of
       "PRIVMSG" -> Just $ PrivMsg prefix (init params) (last params)
-      _ -> Nothing
+      _         -> Nothing
      
 class ToMessage a where
   toMessage :: a -> Message

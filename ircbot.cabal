@@ -1,5 +1,5 @@
 Name:                ircbot
-Version:             0.2.0
+Version:             0.2.1
 Synopsis:            A library for writing irc bots
 Homepage:            http://patch-tag.com/r/stepcut/ircbot
 License:             BSD3
@@ -26,8 +26,10 @@ Library
                        Network.IRC.Bot.Part.NickUser
                        Network.IRC.Bot.Parsec
                        Network.IRC.Bot.PosixLogger
+                       Network.IRC.Bot.Types
   
   Build-depends:  base       >= 4 && <5,
+                  containers == 0.4.*,
                   filepath   >= 1.2 && < 1.4,
                   irc        == 0.5.*,
                   mtl        == 2.0.*,
@@ -36,7 +38,8 @@ Library
                   parsec     == 3.1.*,
                   time       == 1.4.*,
                   unix       >= 2.4 && < 2.6,
-                  random     == 1.0.*
+                  random     == 1.0.*,
+                  stm        == 2.2.*
 
   -- Modules not exported by this package.
   -- Other-modules:       

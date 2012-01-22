@@ -36,7 +36,7 @@ data BotEnv = BotEnv
     , outChan   :: Chan Message
     , logFn     :: Logger
     , botName   :: String
-    , cmdPrefix :: String
+    , cmdPrefix    :: String
     }
   
 newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT BotEnv m a }
