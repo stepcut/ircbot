@@ -5,6 +5,7 @@ module Network.IRC.Bot.BotMonad
     , BotEnv(..)
     , runBotPartT
     , mapBotPartT
+    , askSenderNickName
     ) where
 
 import Control.Applicative (Applicative, Alternative, (<$>))
@@ -36,7 +37,7 @@ data BotEnv = BotEnv
     , outChan   :: Chan Message
     , logFn     :: Logger
     , botName   :: String
-    , cmdPrefix    :: String
+    , cmdPrefix :: String
     }
   
 newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT BotEnv m a }
@@ -67,3 +68,11 @@ instance (Functor m, MonadIO m, MonadPlus m) => BotMonad (BotPartT m) where
     BotPartT $ do l <- logFn <$> ask
                   liftIO $ l lvl msg
   whoami       =  BotPartT $ botName <$> ask
+
+-- | get the nickname of the user who sent the message
+askSenderNickName :: (BotMonad m) => m (Maybe String)
+askSenderNickName =
+    do msg <- askMessage
+       case msg_prefix msg of
+         (Just (NickName nick _ _)) -> return (Just nick)
+         _ -> return Nothing

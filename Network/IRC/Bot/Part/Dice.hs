@@ -1,23 +1,21 @@
 module Network.IRC.Bot.Part.Dice where
 
-import Control.Monad
-import Control.Monad.Trans
-import Network.IRC.Bot.Log
-import Network.IRC.Bot.BotMonad
-import Network.IRC.Bot.Commands
-import Network.IRC.Bot.Parsec
-import System.Random (randomRIO)
-import Text.Parsec
-import Text.Parsec.Error (errorMessages, messageString)
-import qualified Text.Parsec.Error as P
+import Control.Monad            (replicateM)
+import Control.Monad.Trans      (liftIO)
+import Network.IRC.Bot.Log      (LogLevel(Debug))
+import Network.IRC.Bot.BotMonad (BotMonad(..))
+import Network.IRC.Bot.Commands (PrivMsg(..), sendCommand)
+import Network.IRC.Bot.Parsec   (botPrefix, nat, parsecPart)
+import System.Random            (randomRIO)
+import Text.Parsec              (ParsecT, (<|>), (<?>), char, skipMany1, space, string, try)
 
 dicePart :: (BotMonad m) => m ()
 dicePart = parsecPart diceCommand
 
 diceCommand :: (BotMonad m) => String -> ParsecT String () m ()
 diceCommand target =
-    do botPrefix
-       try $ string "dice"
+    do try $ botPrefix >> string "dice"
+       logM Debug "dicePart"
        (numDice, numSides, modifier) <- (do 
          skipMany1 space
          nd <- nat <|> return 1

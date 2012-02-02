@@ -1,22 +1,23 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, RecordWildCards #-}
 module Main where
 
-import Control.Concurrent        (killThread)
-import Control.Concurrent.Chan   (Chan)
-import Data.Set                  (Set, insert)
-import Network                   (HostName, PortID(PortNumber), connectTo)
-import Network.IRC               (Message)
-import Network.IRC.Bot.BotMonad  (BotMonad(..))
-import Network.IRC.Bot.Core      (BotConf(..), User(..), nullBotConf, simpleBot)
-import Network.IRC.Bot.Log       (LogLevel(..), nullLogger, stdoutLogger)
-import Network.IRC.Bot.Part.Dice (dicePart)
-import Network.IRC.Bot.Part.Ping (pingPart)
+import Control.Concurrent         (killThread)
+import Control.Concurrent.Chan    (Chan)
+import Data.Set                   (Set, insert)
+import Network                    (HostName, PortID(PortNumber), connectTo)
+import Network.IRC                (Message)
+import Network.IRC.Bot.BotMonad   (BotMonad(..))
+import Network.IRC.Bot.Core       (BotConf(..), User(..), nullBotConf, simpleBot)
+import Network.IRC.Bot.Log        (LogLevel(..), nullLogger, stdoutLogger)
+import Network.IRC.Bot.Part.Dice  (dicePart)
+import Network.IRC.Bot.Part.Hello (helloPart)
+import Network.IRC.Bot.Part.Ping  (pingPart)
 import Network.IRC.Bot.Part.NickUser (nickUserPart)
 import Network.IRC.Bot.Part.Channels (initChannelsPart)
 import System.Console.GetOpt
-import System.Environment        (getArgs, getProgName)
-import System.Exit               (exitFailure)
-import System.IO                 (stdout)
+import System.Environment         (getArgs, getProgName)
+import System.Exit                (exitFailure)
+import System.IO                  (stdout)
 
 data Flag 
     = BotConfOpt { unBotConfOpt :: (BotConf -> BotConf) }
@@ -40,7 +41,7 @@ botOpts =
       setUsername n  = BotConfOpt $ \c -> c { user = (user c) { username = n } }
       setHostname n  = BotConfOpt $ \c -> c { user = (user c) { hostname = n } }
       setRealname n  = BotConfOpt $ \c -> c { user = (user c) { realname = n } }
-      setCmdPrefix p = BotConfOpt $ \c -> c { prefix = p }
+      setCmdPrefix p = BotConfOpt $ \c -> c { commandPrefix = p }
       addChannel ch  = BotConfOpt $ \c -> c { channels = insert ch (channels c) }
       setLogLevel l  = BotConfOpt $ \c ->
         case l of
@@ -100,4 +101,5 @@ initParts chans =
               , nickUserPart
               , channelsPart
               , dicePart
+              , helloPart
               ]

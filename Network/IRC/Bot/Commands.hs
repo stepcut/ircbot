@@ -32,7 +32,7 @@ ping =
            
 data PrivMsg           
   = PrivMsg { prefix     :: (Maybe Prefix) 
-            , receivers  :: [String] 
+            , receivers  :: [String]
             , msg        :: String
             }
       deriving (Eq, Read, Show)
