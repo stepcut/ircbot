@@ -90,7 +90,8 @@ parsecPart p =
        case ma of
          (Left e) -> 
              do logM Debug $ "Parse error: " ++ show e
-                reportError (head (receivers priv)) e
+                target <- maybeZero =<< replyTo
+                reportError target e
                 mzero
          (Right a) -> return a
 
