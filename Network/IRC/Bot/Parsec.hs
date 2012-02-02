@@ -35,7 +35,8 @@ import Control.Monad
 import Control.Monad.Reader (MonadReader, ask)
 import Control.Monad.Trans
 import Data.Char (digitToInt)
-import Data.List (intercalate, nub)
+import Data.List (intercalate, isPrefixOf, nub)
+import Data.Maybe (fromMaybe)
 import Network.IRC.Bot.Log
 import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands
@@ -64,11 +65,11 @@ nat =
 -- | parser that checks for the 'cmdPrefix' (from the 'BotEnv')
 botPrefix :: (BotMonad m) => ParsecT String () m ()
 botPrefix =
-    (try $ do str <- cmdPrefix <$> askBotEnv
-              string str
-              return ())
-      <|>
-       lift mzero
+    do recv <- fromMaybe "" <$> askReceiver
+       pref <- cmdPrefix <$> askBotEnv
+       if "#" `isPrefixOf` recv
+          then (try $ string pref >> return ()) <|> lift mzero
+          else (try $ string pref >> return ()) <|> return ()
 
 -- | create a bot part by using Parsec to parse the command
 --
@@ -80,12 +81,12 @@ botPrefix =
 --
 -- see 'dicePart' for an example usage.
 parsecPart :: (BotMonad m) =>
-              (String -> ParsecT String () m a) 
+              (ParsecT String () m a) 
            -> m a
 parsecPart p = 
     do priv <- privMsg 
        logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
-       ma <- runParserT (p $ head (receivers priv)) () (msg priv) (msg priv)
+       ma <- runParserT p () (msg priv) (msg priv)
        case ma of
          (Left e) -> 
              do logM Debug $ "Parse error: " ++ show e

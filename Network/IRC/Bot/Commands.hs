@@ -4,6 +4,7 @@ module Network.IRC.Bot.Commands where
 import Control.Applicative
 import Control.Monad
 import Data.Data
+import Data.List (isPrefixOf)
 import Network (HostName, PortID(PortNumber))
 import Network.IRC
 import Network.IRC.Bot.BotMonad
@@ -66,4 +67,34 @@ instance ToMessage Pong where
 
 instance ToMessage PrivMsg where
     toMessage (PrivMsg prefix receivers msg) = Message prefix "PRIVMSG" (receivers ++ [msg])
+
+
+-- | get the nickname of the user who sent the message
+askSenderNickName :: (BotMonad m) => m (Maybe String)
+askSenderNickName =
+    do msg <- askMessage
+       case msg_prefix msg of
+         (Just (NickName nick _ _)) -> return (Just nick)
+         _ -> return Nothing
+
+-- | figure out who to reply to for a given `Message`
+-- 
+-- If message was sent to a #channel reply to the channel. Otherwise reply to the sender.
+replyTo :: (BotMonad m) => m (Maybe String)
+replyTo =
+    do priv <- privMsg
+       let receiver = head (receivers priv)
+       if ("#" `isPrefixOf` receiver)
+          then return (Just receiver)
+          else askSenderNickName
+
+-- | returns the receiver of a message
+-- 
+-- if multiple receivers, it returns only the first
+askReceiver :: (Alternative m, BotMonad m) => m (Maybe String)
+askReceiver =
+    do priv <- privMsg
+       return (Just (head $ receivers priv))
+    <|>
+    do return Nothing
 

@@ -3,8 +3,8 @@ module Network.IRC.Bot.Part.Dice where
 import Control.Monad            (replicateM)
 import Control.Monad.Trans      (liftIO)
 import Network.IRC.Bot.Log      (LogLevel(Debug))
-import Network.IRC.Bot.BotMonad (BotMonad(..))
-import Network.IRC.Bot.Commands (PrivMsg(..), sendCommand)
+import Network.IRC.Bot.BotMonad (BotMonad(..), maybeZero)
+import Network.IRC.Bot.Commands (PrivMsg(..), sendCommand, replyTo)
 import Network.IRC.Bot.Parsec   (botPrefix, nat, parsecPart)
 import System.Random            (randomRIO)
 import Text.Parsec              (ParsecT, (<|>), (<?>), char, skipMany1, space, string, try)
@@ -12,10 +12,11 @@ import Text.Parsec              (ParsecT, (<|>), (<?>), char, skipMany1, space, 
 dicePart :: (BotMonad m) => m ()
 dicePart = parsecPart diceCommand
 
-diceCommand :: (BotMonad m) => String -> ParsecT String () m ()
-diceCommand target =
+diceCommand :: (BotMonad m) => ParsecT String () m ()
+diceCommand =
     do try $ botPrefix >> string "dice"
        logM Debug "dicePart"
+       target <- maybeZero =<< replyTo
        (numDice, numSides, modifier) <- (do 
          skipMany1 space
          nd <- nat <|> return 1
