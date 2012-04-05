@@ -19,12 +19,12 @@ import System.Environment         (getArgs, getProgName)
 import System.Exit                (exitFailure)
 import System.IO                  (stdout)
 
-data Flag 
+data Flag
     = BotConfOpt { unBotConfOpt :: (BotConf -> BotConf) }
 
 botOpts :: [OptDescr Flag]
-botOpts = 
-    [ Option [] ["irc-server"] (ReqArg setIrcServer "hostname or IP") "irc server to connect to" 
+botOpts =
+    [ Option [] ["irc-server"] (ReqArg setIrcServer "hostname or IP") "irc server to connect to"
     , Option [] ["port"]       (ReqArg setPort      "port")           "port to connect to on server"
     , Option [] ["nick"]       (ReqArg setNick      "name")           "irc nick"
     , Option [] ["username"]   (ReqArg setUsername  "username")       "ident username"
@@ -50,11 +50,11 @@ botOpts =
           "important" -> c { logger = stdoutLogger Important }
           "quiet"     -> c { logger = nullLogger }
 
-getBotConf :: Maybe (Chan Message -> IO ()) -> IO BotConf 
+getBotConf :: Maybe (Chan Message -> IO ()) -> IO BotConf
 getBotConf mLogger =
     do args <- getArgs
        case getOpt Permute botOpts args of
-         (f,_,[])   -> 
+         (f,_,[])   ->
              do let conf = (foldr ($) nullBotConf (map unBotConfOpt f)) { channelLogger = mLogger }
                 checkConf conf
                 return conf

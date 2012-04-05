@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, StandaloneDeriving, UndecidableInstances #-}
-module Network.IRC.Bot.BotMonad 
+module Network.IRC.Bot.BotMonad
     ( BotPartT(..)
     , BotMonad(..)
     , BotEnv(..)
@@ -39,7 +39,7 @@ data BotEnv = BotEnv
     , botName   :: String
     , cmdPrefix :: String
     }
-  
+
 newtype BotPartT m a = BotPartT { unBotPartT :: ReaderT BotEnv m a }
     deriving (Applicative, Alternative, Functor, Monad, MonadFix, MonadPlus, MonadTrans, MonadIO, MonadWriter w, MonadState s, MonadError e, MonadCont)
 
@@ -48,10 +48,10 @@ instance (MonadReader r m) => MonadReader r (BotPartT m) where
     local f = BotPartT . mapReaderT (local f) . unBotPartT
 
 instance (MonadRWS r w s m) => MonadRWS r w s (BotPartT m)
-                              
+
 runBotPartT :: BotPartT m a -> BotEnv -> m a
 runBotPartT botPartT = runReaderT (unBotPartT botPartT)
-                              
+
 mapBotPartT :: (m a -> n b) -> BotPartT m a -> BotPartT n b
 mapBotPartT f (BotPartT r) = BotPartT $ mapReaderT f r
 

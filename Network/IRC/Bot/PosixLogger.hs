@@ -37,11 +37,11 @@ posixLogger mLogDir channel logChan =
         | otherwise = do closeFd logFd
                          nowHandle <- openLog now
                          return (utctDay now, nowHandle)
-          
+
       logLoop :: Day -> Maybe Fd -> IO ()
       logLoop logDay mLogFd =
         do msg <- readChan logChan
-           now <- getCurrentTime 
+           now <- getCurrentTime
            (logDay', mLogFd') <- updateLogHandle now logDay mLogFd
            let mPrivMsg = toPrivMsg msg
            case mPrivMsg of

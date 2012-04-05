@@ -6,7 +6,7 @@ module Network.IRC.Bot.Parsec where
 The parsec part is supposed to make it easy to use Parsec to parse the command arguments.
 
 We would also like to be able to generate a help menu. But the help
-menu should not be for only Parsec commands. Or do we? Maybe all interactive commands should be implementing through parsec part. 
+menu should not be for only Parsec commands. Or do we? Maybe all interactive commands should be implementing through parsec part.
 
 Some commands like @seen (and @tell) are two part. There is the part that collects
 the data. And there is the command itself. How would that integrate
@@ -16,11 +16,11 @@ We would like the parsec commands to be non-blocking.
 
 Each top-level part is run in a separate thread. But if we only have one thread for all the parsecParts, then blocking could occur.
 
-We could run every handler for every message, even though we only expect at most one command to match. That seems bogus. Do we really want to allow to different parts to respond to @foo ? 
+We could run every handler for every message, even though we only expect at most one command to match. That seems bogus. Do we really want to allow to different parts to respond to @foo ?
 
-Seems better to have each part register. 
+Seems better to have each part register.
 
-data Part m = 
+data Part m =
     Part { name            :: String
          , description     :: String
          , backgroundParts :: [BotPartT m ()]
@@ -81,14 +81,14 @@ botPrefix =
 --
 -- see 'dicePart' for an example usage.
 parsecPart :: (BotMonad m) =>
-              (ParsecT String () m a) 
+              (ParsecT String () m a)
            -> m a
-parsecPart p = 
-    do priv <- privMsg 
+parsecPart p =
+    do priv <- privMsg
        logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
        ma <- runParserT p () (msg priv) (msg priv)
        case ma of
-         (Left e) -> 
+         (Left e) ->
              do logM Debug $ "Parse error: " ++ show e
                 target <- maybeZero =<< replyTo
                 reportError target e
