@@ -1,19 +1,19 @@
 Name:                ircbot
-Version:             0.3.1
+Version:             0.3.2
 Synopsis:            A library for writing irc bots
 Homepage:            http://patch-tag.com/r/stepcut/ircbot
 License:             BSD3
 License-file:        LICENSE
 Author:              Jeremy Shaw
 Maintainer:          jeremy@seereason.com
--- Copyright:           
+Copyright:           2012 SeeReason Partners LLC
 Stability:           Experimental
 Category:            Network
 Build-type:          Simple
 Cabal-version:       >=1.6
 
 Library
-  Exposed-modules:     
+  Exposed-modules:
                        Network.IRC.Bot
                        Network.IRC.Bot.BotMonad
                        Network.IRC.Bot.Core
@@ -28,9 +28,10 @@ Library
                        Network.IRC.Bot.Parsec
                        Network.IRC.Bot.PosixLogger
                        Network.IRC.Bot.Types
-  
+
   Build-depends:  base       >= 4 && <5,
                   containers == 0.4.*,
+                  directory   < 1.2,
                   filepath   >= 1.2 && < 1.4,
                   irc        == 0.5.*,
                   mtl        == 2.0.*,
@@ -41,10 +42,3 @@ Library
                   unix       >= 2.4 && < 2.6,
                   random     == 1.0.*,
                   stm        == 2.2.*
-
-  -- Modules not exported by this package.
-  -- Other-modules:       
-  
-  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-  -- Build-tools:         
-  

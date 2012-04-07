@@ -6,6 +6,7 @@ import Data.Time.Clock (UTCTime(..), addUTCTime, getCurrentTime)
 import Data.Time.Format (formatTime)
 import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
 import Network.IRC.Bot.Commands
+import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>))
 import System.Locale (defaultTimeLocale)
 import System.Posix ( Fd, OpenMode(WriteOnly), OpenFileFlags(append), closeFd, defaultFileFlags
@@ -28,6 +29,7 @@ posixLogger mLogDir channel logChan =
             Nothing -> return Nothing
             (Just logDir) ->
                 do let logPath = logDir </> (formatTime defaultTimeLocale ((dropWhile (== '#') channel) ++ "-%Y-%m-%d.txt") now)
+                   createDirectoryIfMissing True logDir
                    fd <- openFd logPath WriteOnly (Just 0o0644) (defaultFileFlags { append = True })
                    return (Just fd)
       updateLogHandle :: UTCTime -> Day -> Maybe Fd -> IO (Day, Maybe Fd)
