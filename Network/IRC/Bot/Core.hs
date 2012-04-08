@@ -24,6 +24,7 @@ import Network                  (HostName, PortID(PortNumber), connectTo)
 import Network.IRC              (Message, decode, encode, joinChan, nick, user)
 import Network.IRC              as I
 import Network.IRC.Bot.Types    (User(..), nullUser)
+import Network.IRC.Bot.Limiter  (Limiter(..), newLimiter, limit)
 import Network.IRC.Bot.Log      (Logger, LogLevel(Normal, Debug), stdoutLogger)
 import Network.IRC.Bot.BotMonad (BotMonad(logM, sendMessage), BotPartT, BotEnv(..), runBotPartT)
 import Network.IRC.Bot.Part.NickUser (changeNickUser)
@@ -41,6 +42,7 @@ data BotConf =
     , commandPrefix :: String           -- ^ command prefix
     , user          :: User             -- ^ irc user info
     , channels      :: Set String       -- ^ channel to join
+    , limits        :: Maybe (Int, Int) -- ^ (burst length, delay in microseconds)
     }
 
 nullBotConf :: BotConf
@@ -53,6 +55,7 @@ nullBotConf =
             , commandPrefix  = "#"
             , user           = nullUser
             , channels       = empty
+            , limits         = Nothing
             }
 
 -- | connect to irc server and send NICK and USER commands
@@ -78,14 +81,21 @@ ircLoop logger botName prefix incomingChan outgoingChan parts =
 -- reconnect loop is still a bit buggy
 -- if you try to write multiple lines, and the all fail, reconnect will be called multiple times..
 -- something should be done so that this does not happen
-connectionLoop :: Logger -> TMVar UTCTime -> HostName -> PortID -> String -> User -> Chan Message -> Chan Message -> Maybe (Chan Message) -> QSem -> IO (ThreadId, ThreadId, IO ())
-connectionLoop logger tmv host port nick user outgoingChan incomingChan logChan connQSem =
+connectionLoop :: Logger -> Maybe (Int, Int) -> TMVar UTCTime -> HostName -> PortID -> String -> User -> Chan Message -> Chan Message -> Maybe (Chan Message) -> QSem -> IO (ThreadId, ThreadId, Maybe ThreadId, IO ())
+connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingChan logChan connQSem =
   do hTMVar <- atomically $ newTMVar (undefined :: Handle)
+     (limit, limitTid) <-
+         case mLimitConf of
+           Nothing -> return (return (), Nothing)
+           (Just (burst, delay)) ->
+                    do limiter <- newLimiter burst delay
+                       return (limit limiter, Just $ limitsThreadId limiter)
      doConnect logger host port nick user hTMVar connQSem
      outgoingTid  <- forkIO $ forever $
                       do msg <- readChan outgoingChan
                          writeMaybeChan logChan msg
                          h <- atomically $ readTMVar hTMVar
+                         when (msg_command msg `elem` ["PRIVMSG", "NOTICE"]) limit
                          hPutStrLn h (encode msg) `catch` (reconnect logger host port nick user hTMVar connQSem)
                          now <- getCurrentTime
                          atomically $ swapTMVar tmv now
@@ -107,7 +117,7 @@ connectionLoop logger tmv host port nick user outgoingChan incomingChan logChan 
                 writeChan outgoingChan (quit $ Just "restarting...")
                 hClose h
                 putStrLn "forceReconnect 3"
-     return (outgoingTid, incomingTid, forceReconnect)
+     return (outgoingTid, incomingTid, limitTid, forceReconnect)
 
 ircConnectLoop logger host port nick user =
         (ircConnect host port nick user) `catch`
@@ -145,7 +155,7 @@ simpleBot :: BotConf          -- ^ Bot configuration
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', or equivalent)
           -> IO ([ThreadId], IO ())    -- ^ 'ThreadId' for all forked handler threads and a function that forces a reconnect
 simpleBot BotConf{..} parts =
-    simpleBot' channelLogger logger host port nick commandPrefix user parts
+    simpleBot' channelLogger logger limits host port nick commandPrefix user parts
 
 -- |simpleBot' connects to the server and handles messages using the supplied BotPartTs
 --
@@ -154,6 +164,7 @@ simpleBot BotConf{..} parts =
 -- will be included in the logs.
 simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> Logger           -- ^ application logging
+          -> Maybe (Int, Int) -- ^ rate limiter settings (burst length, delay in microseconds)
           -> HostName         -- ^ irc server to connect
           -> PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
           -> String           -- ^ irc nick
@@ -161,7 +172,7 @@ simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> User             -- ^ irc user info
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', 'channelsPart', and 'nickUserPart)'
           -> IO ([ThreadId], IO ())    -- ^ 'ThreadId' for all forked handler threads and an IO action that forces a reconnect
-simpleBot' mChanLogger logger host port nick prefix user parts =
+simpleBot' mChanLogger logger limitConf host port nick prefix user parts =
   do (mLogTid, mLogChan) <-
          case mChanLogger of
            Nothing  -> return (Nothing, Nothing)
@@ -175,7 +186,7 @@ simpleBot' mChanLogger logger host port nick prefix user parts =
      now <- getCurrentTime
      tmv <- atomically $ newTMVar now
      connQSem <- newQSem 0
-     (outgoingTid, incomingTid, forceReconnect) <- connectionLoop logger tmv host port nick user outgoingChan incomingChan mLogChan connQSem
+     (outgoingTid, incomingTid, mLimitTid, forceReconnect) <- connectionLoop logger limitConf tmv host port nick user outgoingChan incomingChan mLogChan connQSem
      watchDogTid <- forkIO $ forever $
                     do let timeout = 5*60
                        now          <- getCurrentTime
@@ -184,7 +195,7 @@ simpleBot' mChanLogger logger host port nick prefix user parts =
                        threadDelay (30*10^6) -- check every 30 seconds
      ircTids     <- ircLoop logger nick prefix incomingChan outgoingChan parts
      onConnectId <- onConnectLoop logger nick prefix outgoingChan connQSem onConnect
-     return $ (maybe id (:) mLogTid $ (incomingTid : outgoingTid : watchDogTid : ircTids), forceReconnect)
+     return $ (maybe id (:) mLimitTid $ maybe id (:) mLogTid $ (incomingTid : outgoingTid : watchDogTid : ircTids), forceReconnect)
     where
       onConnect :: BotPartT IO ()
       onConnect =

@@ -33,6 +33,7 @@ botOpts =
     , Option [] ["cmd-prefix"] (ReqArg setCmdPrefix "prefix")         "prefix to bot commands (e.g., ?, @, bot: )"
     , Option [] ["channel"]    (ReqArg addChannel   "channel name")   "channel to join after connecting. (can be specified more than once to join multiple channels)"
     , Option [] ["log-level"]  (ReqArg setLogLevel  "debug, normal, important, quiet") "set the logging level"
+    , Option [] ["limit"]      (ReqArg setLimit     "int,int")        "enable rate limiter. burst length, delay in microseconds"
     ]
     where
       setIrcServer n = BotConfOpt $ \c -> c { host = n, user = (user c) { servername = n } }
@@ -49,6 +50,17 @@ botOpts =
           "normal"    -> c { logger = stdoutLogger Normal }
           "important" -> c { logger = stdoutLogger Important }
           "quiet"     -> c { logger = nullLogger }
+          _           -> error $ "unknown log-level: " ++ l
+      setLimit s    = BotConfOpt $ \c ->
+        case break (== ',') s of
+          (burstStr, delayStr) ->
+              case reads burstStr of
+                [(burstLen,[])] ->
+                    case reads (drop 1 $ delayStr) of
+                      [(delay,[])] ->
+                          c { limits = Just (burstLen, delay) }
+                      _ -> error $ "unabled to parse delay: " ++ delayStr
+                _ -> error $ "unabled to parse burst length: " ++ burstStr
 
 getBotConf :: Maybe (Chan Message -> IO ()) -> IO BotConf
 getBotConf mLogger =

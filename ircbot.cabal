@@ -1,10 +1,10 @@
 Name:                ircbot
-Version:             0.4.0
+Version:             0.5.0
 Synopsis:            A library for writing irc bots
 Homepage:            http://patch-tag.com/r/stepcut/ircbot
 License:             BSD3
 License-file:        LICENSE
-Author:              Jeremy Shaw
+Author:              Jeremy Shaw, Eric Mertens
 Maintainer:          jeremy@seereason.com
 Copyright:           2012 SeeReason Partners LLC
 Stability:           Experimental
@@ -19,6 +19,7 @@ Library
                        Network.IRC.Bot.Core
                        Network.IRC.Bot.Commands
                        Network.IRC.Bot.ErrorCodes
+                       Network.IRC.Bot.Limiter
                        Network.IRC.Bot.Log
                        Network.IRC.Bot.Part.Channels
                        Network.IRC.Bot.Part.Dice
