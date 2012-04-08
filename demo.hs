@@ -87,7 +87,7 @@ main :: IO ()
 main =
     do botConf <- getBotConf Nothing
        ircParts <- initParts (channels botConf)
-       tids <- simpleBot botConf ircParts
+       (tids, _reconnect) <- simpleBot botConf ircParts
        (logger botConf) Important  "Press enter to quit."
        getLine
        mapM_ killThread tids
