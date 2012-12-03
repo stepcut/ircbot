@@ -59,7 +59,11 @@ nullBotConf =
             }
 
 -- | connect to irc server and send NICK and USER commands
-ircConnect :: HostName -> PortID -> String -> User -> IO Handle
+ircConnect :: HostName
+           -> PortID
+           -> String
+           -> User
+           -> IO Handle
 ircConnect host port n u =
     do h <- connectTo host port
        hSetBuffering h LineBuffering
@@ -90,7 +94,6 @@ connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingCh
            (Just (burst, delay)) ->
                     do limiter <- newLimiter burst delay
                        return (limit limiter, Just $ limitsThreadId limiter)
-     doConnect logger host port nick user hTMVar connQSem
      outgoingTid  <- forkIO $ forever $
                       do msg <- readChan outgoingChan
                          writeMaybeChan logChan msg
@@ -99,7 +102,9 @@ connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingCh
                          hPutStrLn h (encode msg) `catch` (reconnect logger host port nick user hTMVar connQSem)
                          now <- getCurrentTime
                          atomically $ swapTMVar tmv now
-     incomingTid  <- forkIO $ forever $
+     incomingTid  <- forkIO $ do
+                      doConnect logger host port nick user hTMVar connQSem
+                      forever $
                        do h <- atomically $ readTMVar hTMVar
                           msgStr <- (hGetLine h) `catch` (\e -> reconnect logger host port nick user hTMVar connQSem e >> return "")
                           now <- getCurrentTime
@@ -111,14 +116,21 @@ connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingCh
                                  writeMaybeChan logChan msg
                                  writeChan incomingChan msg
      let forceReconnect =
-             do putStrLn "forceReconnect 1"
+             do putStrLn "forceReconnect: getting handle"
                 h <- atomically $ readTMVar hTMVar
-                putStrLn "forceReconnect 2"
+                putStrLn "forceReconnect: sending /quit"
                 writeChan outgoingChan (quit $ Just "restarting...")
+                putStrLn "forceReconnect: closing handle"
                 hClose h
-                putStrLn "forceReconnect 3"
+                putStrLn "done."
      return (outgoingTid, incomingTid, limitTid, forceReconnect)
 
+ircConnectLoop :: (LogLevel -> String -> IO a) -- ^ logging
+               -> HostName
+               -> PortID
+               -> String
+               -> User
+               -> IO Handle
 ircConnectLoop logger host port nick user =
         (ircConnect host port nick user) `catch`
         (\e ->
@@ -138,6 +150,12 @@ doConnect logger host port nick user hTMVar connQSem =
 reconnect :: Logger -> String -> PortID -> String -> User -> TMVar Handle -> QSem -> IOException -> IO ()
 reconnect logger host port nick user hTMVar connQSem e =
     do logger Normal $ "IRC Connection died: " ++ show e
+{-
+       atomically $ do empty <- isEmptyTMVar hTMVar
+                       if empty
+                          then return ()
+                          else takeTMVar hTMVar >> return ()
+-}
        doConnect logger host port nick user hTMVar connQSem
 
 onConnectLoop :: Logger -> String -> String -> Chan Message -> QSem -> BotPartT IO () -> IO ThreadId

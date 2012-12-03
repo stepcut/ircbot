@@ -99,9 +99,13 @@ main :: IO ()
 main =
     do botConf <- getBotConf Nothing
        ircParts <- initParts (channels botConf)
-       (tids, _reconnect) <- simpleBot botConf ircParts
+       (tids, reconnect) <- simpleBot botConf ircParts
+       (logger botConf) Important  "Press enter to force reconnect."
+       getLine
+       reconnect
        (logger botConf) Important  "Press enter to quit."
        getLine
+
        mapM_ killThread tids
 
 initParts :: (BotMonad m) =>
