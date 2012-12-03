@@ -1,7 +1,7 @@
 Name:                ircbot
 Version:             0.5.2
 Synopsis:            A library for writing irc bots
-Homepage:            http://patch-tag.com/r/stepcut/ircbot
+Homepage:            http://hub.darcs.net/stepcut/ircbot
 License:             BSD3
 License-file:        LICENSE
 Author:              Jeremy Shaw, Eric Mertens
@@ -11,6 +11,10 @@ Stability:           Experimental
 Category:            Network
 Build-type:          Simple
 Cabal-version:       >=1.6
+
+source-repository head
+    type:     darcs
+    location: http://hub.darcs.net/stepcut/ircbot
 
 Library
   Exposed-modules:
