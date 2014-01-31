@@ -17,7 +17,7 @@ diceCommand =
     do try $ botPrefix >> string "dice"
        logM Debug "dicePart"
        target <- maybeZero =<< replyTo
-       (numDice, numSides, modifier) <- (do 
+       (numDice, numSides, modifier) <- (do
          skipMany1 space
          nd <- nat <|> return 1
          if nd > 100
