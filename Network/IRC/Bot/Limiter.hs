@@ -18,12 +18,13 @@ module Network.IRC.Bot.Limiter
     where
 
 import Control.Concurrent      (ThreadId, forkIO, threadDelay)
-import Control.Concurrent.QSem (QSem, newQSem, signalQSem, waitQSem)
+import           Control.Concurrent.SSem (SSem)
+import qualified Control.Concurrent.SSem as SSem
 import Control.Monad           (forever)
 
 data Limiter = Limiter
-    { limitsIn       :: QSem
-    , limitsOut      :: QSem
+    { limitsIn       :: SSem
+    , limitsOut      :: SSem
     , limitsDelay    :: Int
     , limitsThreadId :: ThreadId
     }
@@ -33,8 +34,8 @@ newLimiter :: Int -- ^ max burst length
            -> Int -- ^ delay (in microseconds)
            -> IO Limiter
 newLimiter burst delay = do
-  rdy  <- newQSem burst
-  sent <- newQSem 0
+  rdy  <- SSem.new burst
+  sent <- SSem.new 0
   let l = Limiter { limitsIn       = sent
                   , limitsOut      = rdy
                   , limitsDelay    = delay
@@ -46,12 +47,12 @@ newLimiter burst delay = do
 -- | Execute this before sending
 limit :: Limiter -> IO ()
 limit l = do
-  waitQSem   (limitsOut l)
-  signalQSem (limitsIn l)
+  SSem.wait   (limitsOut l)
+  SSem.signal (limitsIn l)
 
 -- | Loop which manages the limit timers
 limiter :: Limiter -> IO b
 limiter l = forever $ do
-  waitQSem    (limitsIn l)
-  threadDelay (limitsDelay l)
-  signalQSem  (limitsOut l)
+  SSem.wait    (limitsIn l)
+  threadDelay  (limitsDelay l)
+  SSem.signal  (limitsOut l)

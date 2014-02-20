@@ -1,8 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, RecordWildCards, OverloadedStrings #-}
 module Main where
 
 import Control.Concurrent         (killThread)
 import Control.Concurrent.Chan    (Chan)
+import Data.ByteString            (ByteString)
+import qualified Data.ByteString.Char8 as C
 import Data.Set                   (Set, insert)
 import Network                    (HostName, PortID(PortNumber), connectTo)
 import Network.IRC                (Message)
@@ -38,12 +40,12 @@ botOpts =
     where
       setIrcServer n = BotConfOpt $ \c -> c { host = n, user = (user c) { servername = n } }
       setPort str    = BotConfOpt $ \c -> c { port = PortNumber (fromIntegral $ read str) }
-      setNick n      = BotConfOpt $ \c -> c { nick = n }
-      setUsername n  = BotConfOpt $ \c -> c { user = (user c) { username = n } }
+      setNick n      = BotConfOpt $ \c -> c { nick = C.pack n }
+      setUsername n  = BotConfOpt $ \c -> c { user = (user c) { username = C.pack n } }
       setHostname n  = BotConfOpt $ \c -> c { user = (user c) { hostname = n } }
-      setRealname n  = BotConfOpt $ \c -> c { user = (user c) { realname = n } }
+      setRealname n  = BotConfOpt $ \c -> c { user = (user c) { realname = (C.pack n) } }
       setCmdPrefix p = BotConfOpt $ \c -> c { commandPrefix = p }
-      addChannel ch  = BotConfOpt $ \c -> c { channels = insert ch (channels c) }
+      addChannel ch  = BotConfOpt $ \c -> c { channels = insert (C.pack ch) (channels c) }
       setLogLevel l  = BotConfOpt $ \c ->
         case l of
           "debug"     -> c { logger = stdoutLogger Debug }
@@ -83,11 +85,11 @@ exitHelp msg =
 
 checkConf :: BotConf -> IO ()
 checkConf BotConf{..}
-    | null host            = exitHelp "must specify --irc-server"
-    | null nick            = exitHelp "must specify --nick"
-    | null (username user) = exitHelp "must specify --username"
-    | null (hostname user) = exitHelp "must specify --hostname"
-    | null (realname user) = exitHelp "must specify --realname"
+    | null   host            = exitHelp "must specify --irc-server"
+    | C.null nick            = exitHelp "must specify --nick"
+    | C.null (username user) = exitHelp "must specify --username"
+    |   null (hostname user) = exitHelp "must specify --hostname"
+    | C.null (realname user) = exitHelp "must specify --realname"
     | otherwise            = return ()
 
 helpMessage progName = usageInfo header botOpts
@@ -109,7 +111,7 @@ main =
        mapM_ killThread tids
 
 initParts :: (BotMonad m) =>
-             Set String  -- ^ set of channels to join
+             Set ByteString  -- ^ set of channels to join
           -> IO [m ()]
 initParts chans =
     do (_, channelsPart) <- initChannelsPart chans

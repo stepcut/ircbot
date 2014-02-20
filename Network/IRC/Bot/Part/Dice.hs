@@ -1,7 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Network.IRC.Bot.Part.Dice where
 
 import Control.Monad            (replicateM)
 import Control.Monad.Trans      (liftIO)
+import Data.ByteString          (ByteString)
+import Data.ByteString.Char8    (pack)
+import Data.Monoid              ((<>))
 import Network.IRC.Bot.Log      (LogLevel(Debug))
 import Network.IRC.Bot.BotMonad (BotMonad(..), maybeZero)
 import Network.IRC.Bot.Commands (PrivMsg(..), sendCommand, replyTo)
@@ -12,7 +16,7 @@ import Text.Parsec              (ParsecT, (<|>), (<?>), char, skipMany1, space, 
 dicePart :: (BotMonad m) => m ()
 dicePart = parsecPart diceCommand
 
-diceCommand :: (BotMonad m) => ParsecT String () m ()
+diceCommand :: (BotMonad m) => ParsecT ByteString () m ()
 diceCommand =
     do try $ botPrefix >> string "dice"
        logM Debug "dicePart"
@@ -33,5 +37,5 @@ diceCommand =
               return (nd, ns, mod)) <?> "dice <num-dice>d<num-sides>[+<modifier>]"
        rolls <- liftIO $ replicateM (fromIntegral numDice) $ randomRIO (1, numSides)
        let results = "You rolled " ++ show numDice ++ " " ++ show numSides ++ "-sided dice with a +" ++ show modifier ++ " modifier: " ++ show rolls ++ " => " ++ show (sum (modifier : rolls))
-       sendCommand (PrivMsg Nothing [target] results)
+       sendCommand (PrivMsg Nothing [target] (pack results))
     <|> return ()

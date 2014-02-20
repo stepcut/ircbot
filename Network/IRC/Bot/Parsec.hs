@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
 module Network.IRC.Bot.Parsec where
 
 {-
@@ -34,9 +34,12 @@ import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.Reader (MonadReader, ask)
 import Control.Monad.Trans
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as C
 import Data.Char (digitToInt)
 import Data.List (intercalate, isPrefixOf, nub)
 import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>))
 import Network.IRC.Bot.Log
 import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands
@@ -57,17 +60,17 @@ mapParsecT :: (Monad m, Monad n) => (m (Consumed (m (Reply s u a))) -> n (Consum
 mapParsecT f p = mkPT $ \s -> f (runParsecT p s)
 
 -- | parse a positive integer
-nat :: (Monad m) => ParsecT String () m Integer
+nat :: (Monad m) => ParsecT ByteString () m Integer
 nat =
     do digits <- many1 digit
        return $ foldl (\x d -> x * 10 + fromIntegral (digitToInt d)) 0 digits
 
 -- | parser that checks for the 'cmdPrefix' (from the 'BotEnv')
-botPrefix :: (BotMonad m) => ParsecT String () m ()
+botPrefix :: (BotMonad m) => ParsecT ByteString () m ()
 botPrefix =
     do recv <- fromMaybe "" <$> askReceiver
        pref <- cmdPrefix <$> askBotEnv
-       if "#" `isPrefixOf` recv
+       if "#" `C.isPrefixOf` recv
           then (try $ string pref >> return ()) <|> lift mzero
           else (try $ string pref >> return ()) <|> return ()
 
@@ -81,25 +84,25 @@ botPrefix =
 --
 -- see 'dicePart' for an example usage.
 parsecPart :: (BotMonad m) =>
-              (ParsecT String () m a)
+              (ParsecT ByteString () m a)
            -> m a
 parsecPart p =
     do priv <- privMsg
-       logM Debug $ "I got a message: " ++ msg priv ++ " sent to " ++ show (receivers priv)
-       ma <- runParserT p () (msg priv) (msg priv)
+       logM Debug $ "I got a message: " <> msg priv <> " sent to " <> (C.intercalate ", " (receivers priv))
+       ma <- runParserT p () "" (msg priv)
        case ma of
          (Left e) ->
-             do logM Debug $ "Parse error: " ++ show e
+             do logM Debug $ "Parse error: " <> C.pack (show e)
                 target <- maybeZero =<< replyTo
                 reportError target e
                 mzero
          (Right a) -> return a
 
-reportError :: (BotMonad m) => String -> ParseError -> m ()
+reportError :: (BotMonad m) => ByteString -> ParseError -> m ()
 reportError target err =
     let errStrs = showErrorMessages "or" "unknown parse error" "expecting" "unexpected" "end of input" (errorMessages err)
         errStr = intercalate "; " errStrs
-    in sendCommand (PrivMsg Nothing [target] errStr)
+    in sendCommand (PrivMsg Nothing [target] (C.pack errStr))
 
 showErrorMessages ::
     String -> String -> String -> String -> String -> [P.Message] -> [String]
@@ -116,8 +119,8 @@ showErrorMessages msgOr msgUnknown msgExpecting msgUnExpected msgEndOfInput msgs
       showUnExpect    = showMany msgUnExpected unExpect
       showSysUnExpect | not (null unExpect) ||
                         null sysUnExpect = ""
-                      | null firstMsg    = msgUnExpected ++ " " ++ msgEndOfInput
-                      | otherwise        = msgUnExpected ++ " " ++ firstMsg
+                      | null firstMsg    = msgUnExpected <> " " <> msgEndOfInput
+                      | otherwise        = msgUnExpected <> " " <> firstMsg
           where
               firstMsg  = messageString (head sysUnExpect)
 
@@ -127,16 +130,16 @@ showErrorMessages msgOr msgUnknown msgExpecting msgUnExpected msgEndOfInput msgs
       showMany pre msgs = case clean (map messageString msgs) of
                             [] -> ""
                             ms | null pre  -> commasOr ms
-                               | otherwise -> pre ++ " " ++ commasOr ms
+                               | otherwise -> pre <> " " <> commasOr ms
 
       commasOr []       = ""
       commasOr [m]      = m
-      commasOr ms       = commaSep (init ms) ++ " " ++ msgOr ++ " " ++ last ms
+      commasOr ms       = commaSep (init ms) <> " " <> msgOr <> " " <> last ms
 
       commaSep          = seperate ", " . clean
 
       seperate   _ []     = ""
       seperate   _ [m]    = m
-      seperate sep (m:ms) = m ++ sep ++ seperate sep ms
+      seperate sep (m:ms) = m <> sep <> seperate sep ms
 
       clean             = nub . filter (not . null)

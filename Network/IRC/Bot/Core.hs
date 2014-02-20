@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards, OverloadedStrings #-}
 module Network.IRC.Bot.Core
     ( simpleBot
     , simpleBot'
@@ -12,16 +12,18 @@ import Control.Concurrent       (ThreadId, forkIO, threadDelay)
 import Control.Concurrent.Chan  (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Concurrent.STM   (atomically)
 import Control.Concurrent.STM.TMVar  (TMVar, swapTMVar, newTMVar, readTMVar)
-import Control.Concurrent.QSem  (QSem, newQSem, waitQSem, signalQSem)
 import Control.Exception        (IOException, catch)
 import Control.Monad            (mplus, forever, when)
 import Control.Monad.Trans      (liftIO)
+import Data.ByteString          (ByteString)
+import qualified Data.ByteString.Char8 as C
 import Data.Data                (Data, Typeable)
+import Data.Monoid              ((<>))
 import Data.Set                 (Set, empty)
 import Data.Time                (UTCTime, addUTCTime, getCurrentTime)
 import GHC.IO.Handle            (hFlushAll)
 import Network                  (HostName, PortID(PortNumber), connectTo)
-import Network.IRC              (Message, decode, encode, joinChan, nick, user)
+import Network.IRC              (Message, decode, encode, joinChan, nick, showMessage, user)
 import Network.IRC              as I
 import Network.IRC.Bot.Types    (User(..), nullUser)
 import Network.IRC.Bot.Limiter  (Limiter(..), newLimiter, limit)
@@ -29,7 +31,9 @@ import Network.IRC.Bot.Log      (Logger, LogLevel(Normal, Debug), stdoutLogger)
 import Network.IRC.Bot.BotMonad (BotMonad(logM, sendMessage), BotPartT, BotEnv(..), runBotPartT)
 import Network.IRC.Bot.Part.NickUser (changeNickUser)
 import Prelude                  hiding (catch)
-import System.IO                (BufferMode(NoBuffering, LineBuffering), Handle, hClose, hGetLine, hPutStrLn, hSetBuffering)
+import           Control.Concurrent.SSem (SSem)
+import qualified Control.Concurrent.SSem as SSem
+import System.IO                (BufferMode(NoBuffering, LineBuffering), Handle, hClose, hGetLine, hPutChar, hSetBuffering)
 
 -- |Bot configuration
 data BotConf =
@@ -38,10 +42,10 @@ data BotConf =
     , logger        :: Logger           -- ^ app logging
     , host          :: HostName         -- ^ irc server to connect
     , port          :: PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
-    , nick          :: String           -- ^ irc nick
+    , nick          :: ByteString       -- ^ irc nick
     , commandPrefix :: String           -- ^ command prefix
     , user          :: User             -- ^ irc user info
-    , channels      :: Set String       -- ^ channel to join
+    , channels      :: Set ByteString   -- ^ channel to join
     , limits        :: Maybe (Int, Int) -- ^ (burst length, delay in microseconds)
     }
 
@@ -61,7 +65,7 @@ nullBotConf =
 -- | connect to irc server and send NICK and USER commands
 ircConnect :: HostName
            -> PortID
-           -> String
+           -> ByteString
            -> User
            -> IO Handle
 ircConnect host port n u =
@@ -69,12 +73,12 @@ ircConnect host port n u =
        hSetBuffering h LineBuffering
        return h
 
-partLoop :: Logger -> String -> String -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
+partLoop :: Logger -> ByteString -> String -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
 partLoop logger botName prefix incomingChan outgoingChan botPart =
   forever $ do msg <- readChan incomingChan
                runBotPartT botPart (BotEnv msg outgoingChan logger botName prefix)
 
-ircLoop :: Logger -> String -> String -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
+ircLoop :: Logger -> ByteString -> String -> Chan Message -> Chan Message -> [BotPartT IO ()] -> IO [ThreadId]
 ircLoop logger botName prefix incomingChan outgoingChan parts =
     mapM forkPart parts
   where
@@ -85,8 +89,8 @@ ircLoop logger botName prefix incomingChan outgoingChan parts =
 -- reconnect loop is still a bit buggy
 -- if you try to write multiple lines, and the all fail, reconnect will be called multiple times..
 -- something should be done so that this does not happen
-connectionLoop :: Logger -> Maybe (Int, Int) -> TMVar UTCTime -> HostName -> PortID -> String -> User -> Chan Message -> Chan Message -> Maybe (Chan Message) -> QSem -> IO (ThreadId, ThreadId, Maybe ThreadId, IO ())
-connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingChan logChan connQSem =
+connectionLoop :: Logger -> Maybe (Int, Int) -> TMVar UTCTime -> HostName -> PortID -> ByteString -> User -> Chan Message -> Chan Message -> Maybe (Chan Message) -> SSem -> IO (ThreadId, ThreadId, Maybe ThreadId, IO ())
+connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingChan logChan connSSem =
   do hTMVar <- atomically $ newTMVar (undefined :: Handle)
      (limit, limitTid) <-
          case mLimitConf of
@@ -99,20 +103,22 @@ connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingCh
                          writeMaybeChan logChan msg
                          h <- atomically $ readTMVar hTMVar
                          when (msg_command msg `elem` ["PRIVMSG", "NOTICE"]) limit
-                         hPutStrLn h (encode msg) `catch` (reconnect logger host port nick user hTMVar connQSem)
+                         C.hPutStr h (encode msg) `catch` (reconnect logger host port nick user hTMVar connSSem)
+                         hPutChar h '\n'
                          now <- getCurrentTime
                          atomically $ swapTMVar tmv now
      incomingTid  <- forkIO $ do
-                      doConnect logger host port nick user hTMVar connQSem
+                      doConnect logger host port nick user hTMVar connSSem
                       forever $
                        do h <- atomically $ readTMVar hTMVar
-                          msgStr <- (hGetLine h) `catch` (\e -> reconnect logger host port nick user hTMVar connQSem e >> return "")
+                          -- FIXME: is C.hGetLine going to do the write thing in the face of unicode?
+                          msgStr <- (C.hGetLine h) `catch` (\e -> reconnect logger host port nick user hTMVar connSSem e >> return "")
                           now <- getCurrentTime
                           atomically $ swapTMVar tmv now
-                          case decode (msgStr ++ "\n") of
-                            Nothing -> logger Normal ("decode failed: " ++ msgStr)
+                          case decode (msgStr <> "\n") of
+                            Nothing -> logger Normal ("decode failed: " <> msgStr)
                             (Just msg) ->
-                              do logger Debug (show msg)
+                              do logger Debug (showMessage msg)
                                  writeMaybeChan logChan msg
                                  writeChan incomingChan msg
      let forceReconnect =
@@ -125,43 +131,43 @@ connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingCh
                 putStrLn "done."
      return (outgoingTid, incomingTid, limitTid, forceReconnect)
 
-ircConnectLoop :: (LogLevel -> String -> IO a) -- ^ logging
+ircConnectLoop :: (LogLevel -> ByteString -> IO a) -- ^ logging
                -> HostName
                -> PortID
-               -> String
+               -> ByteString
                -> User
                -> IO Handle
 ircConnectLoop logger host port nick user =
         (ircConnect host port nick user) `catch`
         (\e ->
-          do logger Normal $ "irc connect failed ... retry in 60 seconds: " ++ show (e :: IOException)
+          do logger Normal $ "irc connect failed ... retry in 60 seconds: " <> (C.pack $ show (e :: IOException))
              threadDelay (60 * 10^6)
              ircConnectLoop logger host port nick user)
 
-doConnect :: (LogLevel -> String -> IO a) -> String -> PortID -> String -> User -> TMVar Handle -> QSem -> IO ()
-doConnect logger host port nick user hTMVar connQSem =
-    do logger Normal $ showString "Connecting to " . showString host . showString " as " $ nick
+doConnect :: (LogLevel -> ByteString -> IO a) -> HostName -> PortID -> ByteString -> User -> TMVar Handle -> SSem -> IO ()
+doConnect logger host port nick user hTMVar connSSem =
+    do logger Normal $ "Connecting to " <> (C.pack host) <> " as " <> nick
        h <- ircConnectLoop logger host port nick user
        atomically $ swapTMVar hTMVar h
        logger Normal $ "Connected."
-       signalQSem connQSem
+       SSem.signal connSSem
        return ()
 
-reconnect :: Logger -> String -> PortID -> String -> User -> TMVar Handle -> QSem -> IOException -> IO ()
-reconnect logger host port nick user hTMVar connQSem e =
-    do logger Normal $ "IRC Connection died: " ++ show e
+reconnect :: Logger -> HostName -> PortID -> ByteString -> User -> TMVar Handle -> SSem -> IOException -> IO ()
+reconnect logger host port nick user hTMVar connSSem e =
+    do logger Normal $ "IRC Connection died: " <> C.pack (show e)
 {-
        atomically $ do empty <- isEmptyTMVar hTMVar
                        if empty
                           then return ()
                           else takeTMVar hTMVar >> return ()
 -}
-       doConnect logger host port nick user hTMVar connQSem
+       doConnect logger host port nick user hTMVar connSSem
 
-onConnectLoop :: Logger -> String -> String -> Chan Message -> QSem -> BotPartT IO () -> IO ThreadId
-onConnectLoop logger botName prefix outgoingChan connQSem action =
+onConnectLoop :: Logger -> ByteString -> String -> Chan Message -> SSem -> BotPartT IO () -> IO ThreadId
+onConnectLoop logger botName prefix outgoingChan connSSem action =
     forkIO $ forever $
-      do waitQSem connQSem
+      do SSem.wait connSSem
          runBotPartT action (BotEnv undefined outgoingChan logger botName prefix)
 
 -- |simpleBot connects to the server and handles messages using the supplied BotPartTs
@@ -185,7 +191,7 @@ simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> Maybe (Int, Int) -- ^ rate limiter settings (burst length, delay in microseconds)
           -> HostName         -- ^ irc server to connect
           -> PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
-          -> String           -- ^ irc nick
+          -> ByteString       -- ^ irc nick
           -> String           -- ^ command prefix
           -> User             -- ^ irc user info
           -> [BotPartT IO ()] -- ^ bot parts (must include 'pingPart', 'channelsPart', and 'nickUserPart)'
@@ -203,8 +209,8 @@ simpleBot' mChanLogger logger limitConf host port nick prefix user parts =
      incomingChan <- newChan :: IO (Chan Message)
      now <- getCurrentTime
      tmv <- atomically $ newTMVar now
-     connQSem <- newQSem 0
-     (outgoingTid, incomingTid, mLimitTid, forceReconnect) <- connectionLoop logger limitConf tmv host port nick user outgoingChan incomingChan mLogChan connQSem
+     connSSem <- SSem.new 0
+     (outgoingTid, incomingTid, mLimitTid, forceReconnect) <- connectionLoop logger limitConf tmv host port nick user outgoingChan incomingChan mLogChan connSSem
      watchDogTid <- forkIO $ forever $
                     do let timeout = 5*60
                        now          <- getCurrentTime
@@ -212,7 +218,7 @@ simpleBot' mChanLogger logger limitConf host port nick prefix user parts =
                        when (now > addUTCTime (fromIntegral timeout) lastActivity) forceReconnect
                        threadDelay (30*10^6) -- check every 30 seconds
      ircTids     <- ircLoop logger nick prefix incomingChan outgoingChan parts
-     onConnectId <- onConnectLoop logger nick prefix outgoingChan connQSem onConnect
+     onConnectId <- onConnectLoop logger nick prefix outgoingChan connSSem onConnect
      return $ (maybe id (:) mLimitTid $ maybe id (:) mLogTid $ (incomingTid : outgoingTid : watchDogTid : ircTids), forceReconnect)
     where
       onConnect :: BotPartT IO ()

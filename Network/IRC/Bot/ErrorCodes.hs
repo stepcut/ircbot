@@ -1,16 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Network.IRC.Bot.ErrorCodes where
+
+import Data.ByteString (ByteString)
 
 -- * Nickname errors
 
-noNicknameGiven :: String
+noNicknameGiven :: ByteString
 noNicknameGiven = "431"
 
-erroneusNickname :: String
+erroneusNickname :: ByteString
 erroneusNickname = "432"
 
-nicknameInUse :: String
+nicknameInUse :: ByteString
 nicknameInUse = "433"
 
-nickCollision :: String
+nickCollision :: ByteString
 nickCollision = "436"
 

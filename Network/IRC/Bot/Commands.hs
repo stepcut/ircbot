@@ -1,13 +1,18 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
 module Network.IRC.Bot.Commands where
 
 import Control.Applicative
 import Control.Monad
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
 import Data.Data
 import Data.List (isPrefixOf)
-import Network (HostName, PortID(PortNumber))
+import Data.Monoid ((<>))
+import Network (PortID(PortNumber))
 import Network.IRC
 import Network.IRC.Bot.BotMonad
+
+type HostName = ByteString
 
 -- * Commands
 
@@ -33,8 +38,8 @@ ping =
 
 data PrivMsg
   = PrivMsg { prefix     :: (Maybe Prefix)
-            , receivers  :: [String]
-            , msg        :: String
+            , receivers  :: [ByteString]
+            , msg        :: ByteString
             }
       deriving (Eq, Read, Show)
 
@@ -66,11 +71,11 @@ instance ToMessage Pong where
     toMessage (Pong hostName) = Message Nothing "PONG" [hostName]
 
 instance ToMessage PrivMsg where
-    toMessage (PrivMsg prefix receivers msg) = Message prefix "PRIVMSG" (receivers ++ [msg])
+    toMessage (PrivMsg prefix receivers msg) = Message prefix "PRIVMSG" (receivers <> [msg])
 
 
 -- | get the nickname of the user who sent the message
-askSenderNickName :: (BotMonad m) => m (Maybe String)
+askSenderNickName :: (BotMonad m) => m (Maybe ByteString)
 askSenderNickName =
     do msg <- askMessage
        case msg_prefix msg of
@@ -80,18 +85,18 @@ askSenderNickName =
 -- | figure out who to reply to for a given `Message`
 --
 -- If message was sent to a #channel reply to the channel. Otherwise reply to the sender.
-replyTo :: (BotMonad m) => m (Maybe String)
+replyTo :: (BotMonad m) => m (Maybe ByteString)
 replyTo =
     do priv <- privMsg
        let receiver = head (receivers priv)
-       if ("#" `isPrefixOf` receiver)
+       if ("#" `B.isPrefixOf` receiver)
           then return (Just receiver)
           else askSenderNickName
 
 -- | returns the receiver of a message
 --
 -- if multiple receivers, it returns only the first
-askReceiver :: (Alternative m, BotMonad m) => m (Maybe String)
+askReceiver :: (Alternative m, BotMonad m) => m (Maybe ByteString)
 askReceiver =
     do priv <- privMsg
        return (Just (head $ receivers priv))

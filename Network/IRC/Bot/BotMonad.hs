@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, StandaloneDeriving, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, StandaloneDeriving, UndecidableInstances, OverloadedStrings #-}
 module Network.IRC.Bot.BotMonad
     ( BotPartT(..)
     , BotMonad(..)
@@ -20,6 +20,7 @@ import Control.Monad.RWS    (MonadRWS)
 import Control.Concurrent.Chan (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Trans
+import Data.ByteString (ByteString)
 import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
 import Network.IRC.Bot.Log
 
@@ -29,14 +30,14 @@ class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where
   askOutChan   :: m (Chan Message)
   localMessage :: (Message -> Message) -> m a -> m a
   sendMessage  :: Message -> m ()
-  logM         :: LogLevel -> String -> m ()
-  whoami       :: m String
+  logM         :: LogLevel -> ByteString -> m ()
+  whoami       :: m ByteString
 
 data BotEnv = BotEnv
     { message   :: Message
     , outChan   :: Chan Message
     , logFn     :: Logger
-    , botName   :: String
+    , botName   :: ByteString
     , cmdPrefix :: String
     }
 
