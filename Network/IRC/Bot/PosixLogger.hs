@@ -14,14 +14,13 @@ import qualified Data.ByteString as B
 import Data.ByteString.Char8 (pack, unpack)
 import Data.Time.Calendar    (Day(..))
 import Data.Time.Clock    (UTCTime(..), addUTCTime, getCurrentTime)
-import Data.Time.Format   (formatTime)
+import Data.Time.Format   (defaultTimeLocale, formatTime)
 import qualified Foreign.C.Error as C
 import Foreign.Ptr        (castPtr)
 import Network.IRC        (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
 import Network.IRC.Bot.Commands
 import System.Directory   (createDirectoryIfMissing)
 import System.FilePath    ((</>))
-import System.Locale      (defaultTimeLocale)
 import System.Posix.ByteString ( Fd, OpenMode(WriteOnly), OpenFileFlags(append), closeFd, defaultFileFlags
                                , openFd
                                )
