@@ -1,6 +1,7 @@
 Name:                ircbot
 Version:             0.6.5
-Synopsis:            A library for writing irc bots
+Synopsis:            A library for writing IRC bots
+Description:         A simple library for an IRC bot
 License:             BSD3
 License-file:        LICENSE
 Author:              Jeremy Shaw, Eric Mertens
