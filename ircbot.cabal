@@ -1,7 +1,6 @@
 Name:                ircbot
-Version:             0.6.4
+Version:             0.6.5
 Synopsis:            A library for writing irc bots
-Homepage:            http://hub.darcs.net/stepcut/ircbot
 License:             BSD3
 License-file:        LICENSE
 Author:              Jeremy Shaw, Eric Mertens
@@ -11,6 +10,8 @@ Stability:           Experimental
 Category:            Network
 Build-type:          Simple
 Cabal-version:       >=1.6
+Homepage:            https://github.com/stepcut/ircbot
+tested-with:         GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.2, GHC==8.0.1
 
 source-repository head
     type:     git
@@ -43,7 +44,7 @@ Library
                   mtl        >= 2.0  && < 2.3,
                   network    >= 2.3  && < 2.7,
                   parsec     == 3.1.*,
-                  time       >= 1.5  && < 1.6,
+                  time       >= 1.5  && < 1.7,
                   unix       >= 2.4  && < 2.8,
                   random     >= 1.0  && < 1.2,
                   stm        >= 2.2  && < 2.5,
