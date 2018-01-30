@@ -1,5 +1,5 @@
 Name:                ircbot
-Version:             0.6.5.1
+Version:             0.6.5.2
 Synopsis:            A library for writing IRC bots
 Description:         A simple library for an IRC bot
 License:             BSD3
@@ -45,7 +45,7 @@ Library
                   mtl        >= 2.0  && < 2.3,
                   network    >= 2.3  && < 2.7,
                   parsec     == 3.1.*,
-                  time       >= 1.5  && < 1.9,
+                  time       >= 1.5  && < 1.10,
                   unix       >= 2.4  && < 2.8,
                   random     >= 1.0  && < 1.2,
                   stm        >= 2.2  && < 2.5,
