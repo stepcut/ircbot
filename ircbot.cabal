@@ -1,5 +1,5 @@
 Name:                ircbot
-Version:             0.6.5.2
+Version:             0.6.5.3
 Synopsis:            A library for writing IRC bots
 Description:         A simple library for an IRC bot
 License:             BSD3
@@ -19,6 +19,7 @@ source-repository head
     location: https://github.com/stepcut/ircbot
 
 Library
+  Default-language:    Haskell2010
   Exposed-modules:
                        Network.IRC.Bot
                        Network.IRC.Bot.BotMonad
