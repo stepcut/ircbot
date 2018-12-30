@@ -1,5 +1,5 @@
 Name:                ircbot
-Version:             0.6.5.3
+Version:             0.6.5.4
 Synopsis:            A library for writing IRC bots
 Description:         A simple library for an IRC bot
 License:             BSD3
@@ -12,7 +12,7 @@ Category:            Network
 Build-type:          Simple
 Cabal-version:       >=1.10
 Homepage:            https://github.com/stepcut/ircbot
-tested-with:         GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.2, GHC==8.0.2
+tested-with:         GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.2, GHC==8.0.2, GHC==8.6.3
 
 source-repository head
     type:     git
@@ -39,17 +39,17 @@ Library
 
   Build-depends:  base       >= 4    && <5,
                   bytestring >= 0.10 && < 0.11,
-                  containers >= 0.4  && < 0.6,
+                  containers >= 0.4  && < 0.7,
                   directory   < 1.4,
                   filepath   >= 1.2  && < 1.5,
                   irc        == 0.6.*,
                   mtl        >= 2.0  && < 2.3,
-                  network    >= 2.3  && < 2.7,
+                  network    >= 2.3  && < 2.9,
                   parsec     == 3.1.*,
                   time       >= 1.5  && < 1.10,
                   unix       >= 2.4  && < 2.8,
                   random     >= 1.0  && < 1.2,
-                  stm        >= 2.2  && < 2.5,
+                  stm        >= 2.2  && < 2.6,
                   SafeSemaphore >= 0.10 && < 0.11
 
 Executable demo
@@ -57,17 +57,17 @@ Executable demo
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:  base       >= 4    && <5,
                   bytestring >= 0.10 && < 0.11,
-                  containers >= 0.4  && < 0.6,
+                  containers >= 0.4  && < 0.7,
                   directory   < 1.4,
                   filepath   >= 1.2  && < 1.5,
                   irc        == 0.6.*,
                   mtl        >= 2.0  && < 2.3,
-                  network    >= 2.3  && < 2.7,
+                  network    >= 2.3  && < 2.9,
                   parsec     == 3.1.*,
                   time       >= 1.5  && < 1.10,
                   unix       >= 2.4  && < 2.8,
                   random     >= 1.0  && < 1.2,
-                  stm        >= 2.2  && < 2.5,
+                  stm        >= 2.2  && < 2.6,
                   SafeSemaphore >= 0.10 && < 0.11
   other-modules:
                     Network.IRC.Bot

@@ -1,4 +1,4 @@
-{ nixpkgs ? import <nixpkgs> {}, compiler ? "ghc7101" }:
+{ nixpkgs ? import <nixpkgs> {}, compiler ? "default" }:
 
 let
 
@@ -6,7 +6,7 @@ let
 
   f = { mkDerivation, base, bytestring, containers, directory
       , filepath, irc, mtl, network, old-locale, parsec, random
-      , SafeSemaphore, stdenv, stm, time, unix
+      , SafeSemaphore, stdenv, stm, time, unix, cabal-install
       }:
       mkDerivation {
         pname = "ircbot";
@@ -14,7 +14,7 @@ let
         src = ./.;
         buildDepends = [
           base bytestring containers directory filepath irc mtl network
-          old-locale parsec random SafeSemaphore stm time unix
+          old-locale parsec random SafeSemaphore stm time unix cabal-install
         ];
         homepage = "http://hub.darcs.net/stepcut/ircbot";
         description = "A library for writing irc bots";
