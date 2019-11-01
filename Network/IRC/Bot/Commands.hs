@@ -73,6 +73,15 @@ instance ToMessage Pong where
 instance ToMessage PrivMsg where
     toMessage (PrivMsg prefix receivers msg) = Message prefix "PRIVMSG" (receivers <> [msg])
 
+data Notice
+  = Notice  { noticePrefix     :: (Maybe Prefix)
+            , noticeReceivers  :: [ByteString]
+            , noticeMsg        :: ByteString
+            }
+      deriving (Eq, Read, Show)
+
+instance ToMessage Notice where
+    toMessage (Notice prefix receivers msg) = Message prefix "NOTICE" (receivers <> [msg])
 
 -- | get the nickname of the user who sent the message
 askSenderNickName :: (BotMonad m) => m (Maybe ByteString)
