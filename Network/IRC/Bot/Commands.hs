@@ -8,7 +8,7 @@ import qualified Data.ByteString as B
 import Data.Data
 import Data.List (isPrefixOf)
 import Data.Monoid ((<>))
-import Network (PortID(PortNumber))
+import Network.Socket (PortNumber)
 import Network.IRC
 import Network.IRC.Bot.BotMonad
 
