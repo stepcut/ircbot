@@ -6,7 +6,7 @@ import Control.Concurrent.Chan    (Chan)
 import Data.ByteString            (ByteString)
 import qualified Data.ByteString.Char8 as C
 import Data.Set                   (Set, insert)
-import Network                    (HostName, PortID(PortNumber), connectTo)
+import Network.Socket      hiding (Debug)
 import Network.IRC                (Message)
 import Network.IRC.Bot.BotMonad   (BotMonad(..))
 import Network.IRC.Bot.Core       (BotConf(..), User(..), nullBotConf, simpleBot)
@@ -39,7 +39,7 @@ botOpts =
     ]
     where
       setIrcServer n = BotConfOpt $ \c -> c { host = n, user = (user c) { servername = n } }
-      setPort str    = BotConfOpt $ \c -> c { port = PortNumber (fromIntegral $ read str) }
+      setPort str    = BotConfOpt $ \c -> c { port = (fromIntegral $ read str) }
       setNick n      = BotConfOpt $ \c -> c { nick = C.pack n }
       setUsername n  = BotConfOpt $ \c -> c { user = (user c) { username = C.pack n } }
       setHostname n  = BotConfOpt $ \c -> c { user = (user c) { hostname = n } }

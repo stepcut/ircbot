@@ -22,7 +22,7 @@ import Data.Monoid              ((<>))
 import Data.Set                 (Set, empty)
 import Data.Time                (UTCTime, addUTCTime, getCurrentTime)
 import GHC.IO.Handle            (hFlushAll)
-import Network                  (HostName, PortID(PortNumber), connectTo)
+import Network.Socket           hiding (Debug)
 import Network.IRC              (Message, decode, encode, joinChan, nick, showMessage, user)
 import Network.IRC              as I
 import Network.IRC.Bot.Types    (User(..), nullUser)
@@ -33,7 +33,7 @@ import Network.IRC.Bot.Part.NickUser (changeNickUser)
 import Prelude                  hiding (catch)
 import           Control.Concurrent.SSem (SSem)
 import qualified Control.Concurrent.SSem as SSem
-import System.IO                (BufferMode(NoBuffering, LineBuffering), Handle, hClose, hGetLine, hPutChar, hSetBuffering)
+import System.IO                (BufferMode(NoBuffering, LineBuffering), Handle, hClose, hGetLine, hPutChar, hSetBuffering, IOMode(..))
 
 -- |Bot configuration
 data BotConf =
@@ -41,7 +41,7 @@ data BotConf =
     { channelLogger :: (Maybe (Chan Message -> IO ()))  -- ^ optional channel logging function
     , logger        :: Logger           -- ^ app logging
     , host          :: HostName         -- ^ irc server to connect
-    , port          :: PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
+    , port          :: PortNumber       -- ^ irc port to connect to (usually, 'PortNumber 6667')
     , nick          :: ByteString       -- ^ irc nick
     , commandPrefix :: String           -- ^ command prefix
     , user          :: User             -- ^ irc user info
@@ -54,7 +54,7 @@ nullBotConf =
     BotConf { channelLogger  = Nothing
             , logger         = stdoutLogger Normal
             , host           = ""
-            , port           = PortNumber 6667
+            , port           = 6667
             , nick           = ""
             , commandPrefix  = "#"
             , user           = nullUser
@@ -64,14 +64,19 @@ nullBotConf =
 
 -- | connect to irc server and send NICK and USER commands
 ircConnect :: HostName
-           -> PortID
+           -> PortNumber
            -> ByteString
            -> User
            -> IO Handle
-ircConnect host port n u =
-    do h <- connectTo host port
-       hSetBuffering h LineBuffering
-       return h
+ircConnect host port n u = do
+    addr <- head <$> getAddrInfo Nothing (Just host) (Just $ show port)
+    print addr
+    sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+    connect sock $ addrAddress addr
+
+    h <- socketToHandle sock ReadWriteMode
+    hSetBuffering h LineBuffering
+    return h
 
 partLoop :: Logger -> ByteString -> String -> Chan Message -> Chan Message -> (BotPartT IO ()) -> IO ()
 partLoop logger botName prefix incomingChan outgoingChan botPart =
@@ -89,7 +94,7 @@ ircLoop logger botName prefix incomingChan outgoingChan parts =
 -- reconnect loop is still a bit buggy
 -- if you try to write multiple lines, and the all fail, reconnect will be called multiple times..
 -- something should be done so that this does not happen
-connectionLoop :: Logger -> Maybe (Int, Int) -> TMVar UTCTime -> HostName -> PortID -> ByteString -> User -> Chan Message -> Chan Message -> Maybe (Chan Message) -> SSem -> IO (ThreadId, ThreadId, Maybe ThreadId, IO ())
+connectionLoop :: Logger -> Maybe (Int, Int) -> TMVar UTCTime -> HostName -> PortNumber -> ByteString -> User -> Chan Message -> Chan Message -> Maybe (Chan Message) -> SSem -> IO (ThreadId, ThreadId, Maybe ThreadId, IO ())
 connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingChan logChan connSSem =
   do hTMVar <- atomically $ newTMVar (undefined :: Handle)
      (limit, limitTid) <-
@@ -133,7 +138,7 @@ connectionLoop logger mLimitConf tmv host port nick user outgoingChan incomingCh
 
 ircConnectLoop :: (LogLevel -> ByteString -> IO a) -- ^ logging
                -> HostName
-               -> PortID
+               -> PortNumber
                -> ByteString
                -> User
                -> IO Handle
@@ -144,7 +149,7 @@ ircConnectLoop logger host port nick user =
              threadDelay (60 * 10^6)
              ircConnectLoop logger host port nick user)
 
-doConnect :: (LogLevel -> ByteString -> IO a) -> HostName -> PortID -> ByteString -> User -> TMVar Handle -> SSem -> IO ()
+doConnect :: (LogLevel -> ByteString -> IO a) -> HostName -> PortNumber -> ByteString -> User -> TMVar Handle -> SSem -> IO ()
 doConnect logger host port nick user hTMVar connSSem =
     do logger Normal $ "Connecting to " <> (C.pack host) <> " as " <> nick
        h <- ircConnectLoop logger host port nick user
@@ -153,7 +158,7 @@ doConnect logger host port nick user hTMVar connSSem =
        SSem.signal connSSem
        return ()
 
-reconnect :: Logger -> HostName -> PortID -> ByteString -> User -> TMVar Handle -> SSem -> IOException -> IO ()
+reconnect :: Logger -> HostName -> PortNumber -> ByteString -> User -> TMVar Handle -> SSem -> IOException -> IO ()
 reconnect logger host port nick user hTMVar connSSem e =
     do logger Normal $ "IRC Connection died: " <> C.pack (show e)
 {-
@@ -190,7 +195,7 @@ simpleBot' :: (Maybe (Chan Message -> IO ())) -- ^ optional logging function
           -> Logger           -- ^ application logging
           -> Maybe (Int, Int) -- ^ rate limiter settings (burst length, delay in microseconds)
           -> HostName         -- ^ irc server to connect
-          -> PortID           -- ^ irc port to connect to (usually, 'PortNumber 6667')
+          -> PortNumber       -- ^ irc port to connect to (usually, '6667')
           -> ByteString       -- ^ irc nick
           -> String           -- ^ command prefix
           -> User             -- ^ irc user info
