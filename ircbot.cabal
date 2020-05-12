@@ -1,5 +1,5 @@
 Name:                ircbot
-Version:             0.6.5.4
+Version:             0.6.6
 Synopsis:            A library for writing IRC bots
 Description:         A simple library for an IRC bot
 License:             BSD3
@@ -12,7 +12,7 @@ Category:            Network
 Build-type:          Simple
 Cabal-version:       >=1.10
 Homepage:            https://github.com/stepcut/ircbot
-tested-with:         GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.2, GHC==8.0.2, GHC==8.6.3
+tested-with:         GHC == 7.10.2, GHC==8.0.2, GHC==8.6.5, GHC==8.8.3, GHC==8.10.1
 
 source-repository head
     type:     git
