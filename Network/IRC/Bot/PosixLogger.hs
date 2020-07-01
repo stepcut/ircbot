@@ -13,12 +13,12 @@ import Data.ByteString    (ByteString)
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 (pack, unpack)
 import Data.Time.Calendar    (Day(..))
-import Data.Time.Clock    (UTCTime(..), addUTCTime, getCurrentTime)
+import Data.Time.Clock    (UTCTime(..), getCurrentTime)
 import Data.Time.Format   (defaultTimeLocale, formatTime)
 import qualified Foreign.C.Error as C
 import Foreign.Ptr        (castPtr)
-import Network.IRC        (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
-import Network.IRC.Bot.Commands
+import Network.IRC        (Message, Prefix(NickName))
+import Network.IRC.Bot.Commands (PrivMsg(PrivMsg), toPrivMsg)
 import System.Directory   (createDirectoryIfMissing)
 import System.FilePath    ((</>))
 import System.Posix.ByteString ( Fd, OpenMode(WriteOnly), OpenFileFlags(append), closeFd, defaultFileFlags
@@ -46,7 +46,7 @@ posixLogger mLogDir channel logChan =
                    fd <- openFd (pack logPath) WriteOnly (Just 0o0644) (defaultFileFlags { append = True })
                    return (Just fd)
       updateLogHandle :: UTCTime -> Day -> Maybe Fd -> IO (Day, Maybe Fd)
-      updateLogHandle now logDay Nothing = return (logDay, Nothing)
+      updateLogHandle _now logDay Nothing = return (logDay, Nothing)
       updateLogHandle now logDay (Just logFd)
         | logDay == (utctDay now) = return (logDay, Just logFd)
         | otherwise = do closeFd logFd
@@ -60,11 +60,11 @@ posixLogger mLogDir channel logChan =
            (logDay', mLogFd') <- updateLogHandle now logDay mLogFd
            let mPrivMsg = toPrivMsg msg
            case mPrivMsg of
-             (Just (PrivMsg (Just (NickName nick _user _server)) receivers msg)) | channel `elem` receivers ->
+             (Just (PrivMsg (Just (NickName nick _user _server)) receivers msg')) | channel `elem` receivers ->
                    do let logMsg =
                               B.concat [ pack (formatTime defaultTimeLocale "%X " now)
                                        , "<" , nick , "> "
-                                       , msg
+                                       , msg'
                                        , "\n"
                                        ]
                       case mLogFd' of
@@ -83,6 +83,6 @@ fdWrites fd bs =
         if len <= 0
            then return ()
            else do c <- C.throwErrnoIfMinus1Retry "fdWrites" $ fdWriteBuf fd (castPtr cstring) (fromIntegral len)
-                   if (fromIntegral c) == (fromIntegral len)
+                   if (fromIntegral c :: Int) == (fromIntegral len)
                       then return ()
                       else fdWrites fd (B.drop (fromIntegral c) bs)

@@ -8,20 +8,19 @@ module Network.IRC.Bot.BotMonad
     , maybeZero
     ) where
 
-import Control.Applicative (Applicative, Alternative, (<$>))
-import Control.Arrow (first)
-import Control.Monad (MonadPlus(mplus, mzero), forever, replicateM, when)
+import Control.Applicative (Alternative)
+import Control.Monad (MonadPlus(mzero))
 import Control.Monad.Cont   (MonadCont)
 import Control.Monad.Except  (MonadError)
-import Control.Monad.Reader (MonadReader(ask, local), MonadTrans, ReaderT(runReaderT), mapReaderT)
+import Control.Monad.Reader (MonadReader(ask, local), ReaderT(runReaderT), mapReaderT)
 import Control.Monad.Writer (MonadWriter)
 import Control.Monad.State  (MonadState)
 import Control.Monad.RWS    (MonadRWS)
-import Control.Concurrent.Chan (Chan, dupChan, newChan, readChan, writeChan)
+import Control.Concurrent.Chan (Chan, writeChan)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.Trans
 import Data.ByteString (ByteString)
-import Network.IRC (Command, Message(Message, msg_prefix, msg_command, msg_params), Prefix(NickName), UserName, encode, decode, joinChan, nick, user)
+import Network.IRC (Message)
 import Network.IRC.Bot.Log
 
 class (Functor m, MonadPlus m, MonadIO m) => BotMonad m where

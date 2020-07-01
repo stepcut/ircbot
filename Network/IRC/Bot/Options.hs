@@ -11,6 +11,7 @@ import qualified Data.ByteString.Char8
 import qualified Data.Set
 
 import Options.Applicative
+import Data.Semigroup ((<>))
 
 import Network.IRC.Bot.Core       (BotConf(..), User(..))
 import Network.IRC.Bot.Log        (Logger, LogLevel(..), stdoutLogger)

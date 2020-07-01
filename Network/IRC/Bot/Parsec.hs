@@ -1,4 +1,8 @@
 {-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
+-- Enable when GHC7.10 support is not needed
+-- where this fails with 'unknown flag'
+-- {-# OPTIONS_GHC -Wno-orphans #-}
+
 module Network.IRC.Bot.Parsec where
 
 {-
@@ -30,14 +34,12 @@ data Part m =
 This is good, unless multiple plugins wanted to depend on some common backgroundParts
 -}
 
-import Control.Applicative ((<$>))
 import Control.Monad
-import Control.Monad.Reader (MonadReader, ask)
 import Control.Monad.Trans
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as C
 import Data.Char (digitToInt)
-import Data.List (intercalate, isPrefixOf, nub)
+import Data.List (intercalate, nub)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Network.IRC.Bot.Log
@@ -53,7 +55,7 @@ instance (BotMonad m, Monad m) => BotMonad (ParsecT s u m) where
     askOutChan       = lift askOutChan
     localMessage f m = mapParsecT (localMessage f) m
     sendMessage      = lift . sendMessage
-    logM lvl msg     = lift (logM lvl msg)
+    logM lvl msg'     = lift (logM lvl msg')
     whoami           = lift whoami
 
 mapParsecT :: (Monad m, Monad n) => (m (Consumed (m (Reply s u a))) -> n (Consumed (n (Reply s u b)))) -> ParsecT s u m a -> ParsecT s u n b
@@ -106,12 +108,12 @@ reportError target err =
 
 showErrorMessages ::
     String -> String -> String -> String -> String -> [P.Message] -> [String]
-showErrorMessages msgOr msgUnknown msgExpecting msgUnExpected msgEndOfInput msgs
-    | null msgs = [msgUnknown]
+showErrorMessages msgOr msgUnknown msgExpecting msgUnExpected msgEndOfInput msgs'
+    | null msgs' = [msgUnknown]
     | otherwise = clean $
                  [showSysUnExpect,showUnExpect,showExpect,showMessages]
     where
-      (sysUnExpect,msgs1) = span ((P.SysUnExpect "") ==) msgs
+      (sysUnExpect,msgs1) = span ((P.SysUnExpect "") ==) msgs'
       (unExpect,msgs2)    = span ((P.UnExpect    "") ==) msgs1
       (expect,messages)   = span ((P.Expect      "") ==) msgs2
 
