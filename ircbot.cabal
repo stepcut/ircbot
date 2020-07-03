@@ -39,7 +39,10 @@ Library
                        Network.IRC.Bot.PosixLogger
                        Network.IRC.Bot.Types
 
-  ghc-options:    -Wall -Wunused-packages
+  if impl(ghc >= 8.10)
+    ghc-options:  -Wall -Wunused-packages
+  else
+    ghc-options:  -Wall
   Build-depends:  base       >= 4    && <5,
                   bytestring >= 0.10 && < 0.11,
                   containers >= 0.4  && < 0.7,
