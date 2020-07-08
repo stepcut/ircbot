@@ -39,7 +39,10 @@ Library
                        Network.IRC.Bot.PosixLogger
                        Network.IRC.Bot.Types
 
-  ghc-options:    -Wall -Wunused-packages
+  if impl(ghc >= 8.10)
+    ghc-options:  -Wall -Wunused-packages
+  else
+    ghc-options:  -Wall
   Build-depends:  base       >= 4    && <5,
                   bytestring >= 0.10 && < 0.11,
                   containers >= 0.4  && < 0.7,
@@ -55,6 +58,9 @@ Library
                   stm        >= 2.2  && < 2.6,
                   SafeSemaphore >= 0.10 && < 0.11,
                   optparse-applicative >= 0.14 && < 0.16
+
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups >= 0.18
 
 Executable ircbot-demo
   main-is:        demo.hs

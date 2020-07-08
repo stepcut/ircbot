@@ -2,13 +2,12 @@ module Network.IRC.Bot.Part.NickUser where
 
 import Control.Monad.Trans        (liftIO)
 import Data.ByteString            (ByteString)
-import Data.ByteString.Char8      (pack, unpack)
+import Data.ByteString.Char8      (pack)
 import Data.Monoid                ((<>))
 import Network.IRC.Bot.BotMonad   (BotMonad(..) )
 import Network.IRC.Bot.Types      (User(..))
 import Network.IRC.Bot.ErrorCodes
 import Network.IRC.Bot.Log        (LogLevel(..))
--- import Network.IRC.Bot.Commands (Ping(..), Pong(..), ping, sendCommand)
 import           Network.IRC      (Message(..), showMessage)
 import qualified Network.IRC      as IRC
 import System.Random              (randomRIO)

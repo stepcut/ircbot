@@ -6,7 +6,6 @@ module Network.IRC.Bot.Types
 
 import Data.ByteString          (ByteString)
 import Data.Data                (Data, Typeable)
-import Network.IRC              as I
 import Network.Socket           (HostName)
 
 data User = User

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+cabal run ircbot-demo -- \
+  --server irc.example.org \
+  --nick ircbot \
+  --username ircbot \
+  --hostname ircbot.example.org \
+  --realname "ircbot" \
+  --burst-length 2 \
+  --delay-ms 1000000 \
+  "#bottest"
