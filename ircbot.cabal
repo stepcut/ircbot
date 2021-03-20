@@ -57,7 +57,7 @@ Library
                   random     >= 1.0  && < 1.2,
                   stm        >= 2.2  && < 2.6,
                   SafeSemaphore >= 0.10 && < 0.11,
-                  optparse-applicative >= 0.14 && < 0.16
+                  optparse-applicative >= 0.14 && < 0.17
 
   if !impl(ghc >= 8.0)
     build-depends: semigroups >= 0.18
