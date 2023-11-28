@@ -1,7 +1,5 @@
 {-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
--- Enable when GHC7.10 support is not needed
--- where this fails with 'unknown flag'
--- {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Network.IRC.Bot.Parsec where
 
