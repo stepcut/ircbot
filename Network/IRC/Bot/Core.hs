@@ -16,7 +16,6 @@ import Control.Exception        (IOException, catch)
 import Control.Monad            (mplus, forever, void, when)
 import Data.ByteString          (ByteString)
 import qualified Data.ByteString.Char8 as C
-import Data.Monoid              ((<>))
 import Data.Set                 (Set, empty)
 import Data.Time                (UTCTime, addUTCTime, getCurrentTime)
 import Network.Socket           hiding (Debug)

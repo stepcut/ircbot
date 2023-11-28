@@ -41,7 +41,6 @@ import qualified Data.ByteString.Char8 as C
 import Data.Char (digitToInt)
 import Data.List (intercalate, nub)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
 import Network.IRC.Bot.Log
 import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands
