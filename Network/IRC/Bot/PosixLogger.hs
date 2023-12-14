@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-
 
@@ -21,7 +22,7 @@ import Network.IRC        (Message, Prefix(NickName))
 import Network.IRC.Bot.Commands (PrivMsg(PrivMsg), toPrivMsg)
 import System.Directory   (createDirectoryIfMissing)
 import System.FilePath    ((</>))
-import System.Posix.ByteString ( Fd, OpenMode(WriteOnly), OpenFileFlags(append), closeFd, defaultFileFlags
+import System.Posix.ByteString ( Fd, OpenMode(WriteOnly), OpenFileFlags(..), closeFd, defaultFileFlags
                                , openFd
                                )
 import System.Posix.IO.ByteString (fdWriteBuf)
@@ -43,7 +44,11 @@ posixLogger mLogDir channel logChan =
             (Just logDir) ->
                 do let logPath = logDir </> (formatTime defaultTimeLocale ((dropWhile (== '#') (unpack channel)) ++ "-%Y-%m-%d.txt") now)
                    createDirectoryIfMissing True logDir
+#if MIN_VERSION_unix(2,8,0)
+                   fd <- openFd (pack logPath) WriteOnly (defaultFileFlags { append = True, creat = Just 0o0644 })
+#else
                    fd <- openFd (pack logPath) WriteOnly (Just 0o0644) (defaultFileFlags { append = True })
+#endif
                    return (Just fd)
       updateLogHandle :: UTCTime -> Day -> Maybe Fd -> IO (Day, Maybe Fd)
       updateLogHandle _now logDay Nothing = return (logDay, Nothing)

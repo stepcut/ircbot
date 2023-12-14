@@ -1,7 +1,5 @@
 {-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
--- Enable when GHC7.10 support is not needed
--- where this fails with 'unknown flag'
--- {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Network.IRC.Bot.Parsec where
 
@@ -41,7 +39,6 @@ import qualified Data.ByteString.Char8 as C
 import Data.Char (digitToInt)
 import Data.List (intercalate, nub)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
 import Network.IRC.Bot.Log
 import Network.IRC.Bot.BotMonad
 import Network.IRC.Bot.Commands

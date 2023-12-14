@@ -4,7 +4,6 @@ module Network.IRC.Bot.Part.Channels where
 import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TVar (TVar, newTVar, readTVar, writeTVar)
 import Control.Monad.Trans (MonadIO(liftIO))
-import Data.Monoid ((<>))
 import Data.Set (Set, insert, toList)
 import Data.ByteString (ByteString)
 import Network.IRC (Message(..), joinChan)

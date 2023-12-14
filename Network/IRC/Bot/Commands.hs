@@ -6,7 +6,6 @@ import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Data
-import Data.Monoid ((<>))
 import Network.IRC (Message(Message, msg_prefix, msg_command, msg_params), Command, Prefix(NickName))
 import Network.IRC.Bot.BotMonad (BotMonad, askMessage, sendMessage)
 

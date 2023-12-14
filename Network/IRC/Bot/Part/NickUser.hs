@@ -3,7 +3,6 @@ module Network.IRC.Bot.Part.NickUser where
 import Control.Monad.Trans        (liftIO)
 import Data.ByteString            (ByteString)
 import Data.ByteString.Char8      (pack)
-import Data.Monoid                ((<>))
 import Network.IRC.Bot.BotMonad   (BotMonad(..) )
 import Network.IRC.Bot.Types      (User(..))
 import Network.IRC.Bot.ErrorCodes
