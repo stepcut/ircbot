@@ -40,9 +40,9 @@ Library
                        Network.IRC.Bot.Types
 
   if impl(ghc >= 8.10)
-    ghc-options:  -Wall -Werror -Wunused-packages
+    ghc-options:  -Wall -Wunused-packages
   else
-    ghc-options:  -Wall -Werror
+    ghc-options:  -Wall
   Build-depends:  base       >= 4    && <5,
                   bytestring >= 0.10 && < 0.13,
                   containers >= 0.4  && < 0.8,
